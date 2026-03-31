@@ -1,0 +1,176 @@
+---
+title: support_ops_env
+sdk: docker
+app_port: 7860
+tags:
+  - openenv
+---
+
+# support_ops_env
+
+`support_ops_env` is a real-world OpenEnv benchmark for B2B SaaS support operations. Each episode presents a small inbox of 2-3 tickets. The agent must identify the primary case, inspect the right internal records, take safe operational actions, draft a structured customer reply, and finalize the case.
+
+## Why this environment exists
+- It models a genuine human workflow instead of a toy task.
+- It evaluates prioritization, policy compliance, and safe escalation.
+- It stays deterministic and cheap to run because all task data is fixture-driven.
+
+## Action space
+The environment uses one typed `SupportAction` model with these supported actions:
+- `open_ticket`
+- `inspect_record`
+- `search_kb`
+- `set_priority`
+- `set_status`
+- `add_tag`
+- `apply_credit`
+- `escalate`
+- `draft_reply`
+- `finalize_resolution`
+
+Important action fields:
+- `ticket_id`
+- `record_id`
+- `query`
+- `priority`
+- `status`
+- `tag`
+- `amount`
+- `currency`
+- `escalation_team`
+- `template_id`
+- `reply_checklist`
+- `resolution_code`
+
+## Observation space
+Each observation includes:
+- `task_brief`
+- `inbox`
+- `active_ticket_id`
+- `focus_panel`
+- `available_record_ids`
+- `action_history`
+- `step_count`
+- `remaining_steps`
+- `last_action_error`
+
+## Tasks
+The initial release ships 3 deterministic tasks:
+
+1. `billing_seat_adjustment` (easy)
+- Resolve an overbilling complaint by inspecting account and invoice data, issuing the exact credit, updating metadata, and finalizing safely.
+
+2. `login_incident_triage` (medium)
+- Handle a VIP login-failure report during an active authentication incident without taking unsafe remediation shortcuts.
+
+3. `suspicious_admin_request` (hard)
+- Detect a likely account-takeover scenario, inspect verification/security records, escalate to security, and refuse unsafe fulfillment.
+
+## Reward design
+Reward is dense and deterministic:
+
+```text
+reward = rubric_progress_delta + behavior_adjustments
+```
+
+Behavior penalties apply for:
+- invalid action payloads
+- repeated loops
+- repeated inspection of irrelevant records
+- forbidden unsafe actions
+
+Final task scores are deterministic in `[0.0, 1.0]`.
+
+## Project layout
+Key files:
+- `models.py`
+- `client.py`
+- `server/environment.py`
+- `server/app.py`
+- `server/grader.py`
+- `server/reward.py`
+- `server/task_data/*.yaml`
+- `inference.py`
+- `openenv.yaml`
+
+## Setup
+Install dependencies:
+
+```bash
+pip install -e .
+```
+
+Run the server locally:
+
+```bash
+python -m server.app
+```
+
+Or with uvicorn:
+
+```bash
+uvicorn server.app:app --host 0.0.0.0 --port 7860
+```
+
+## Baseline inference
+The root `inference.py` script uses the OpenAI client and expects:
+- `OPENAI_API_KEY`
+- `MODEL_NAME`
+- `API_BASE_URL` (optional for OpenAI-compatible endpoints)
+- `ENV_BASE_URL` (optional if connecting to a running server; otherwise it uses the local in-process environment)
+
+For local runs with compatible providers, `inference.py` also accepts these aliases:
+- Groq: `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_BASE_URL`
+- xAI/Grok-style aliases: `XAI_API_KEY`, `XAI_MODEL`, `XAI_BASE_URL`, `GROK_API_KEY`, `GROK_MODEL`, `GROK_BASE_URL`
+
+This keeps the benchmark compliant with the required OpenAI client while still allowing OpenAI-compatible backends.
+
+Run it with:
+
+```bash
+python inference.py
+```
+
+## Validation and testing
+Recommended checks:
+
+```bash
+python -m pytest
+openenv validate
+docker build -t support-ops-env .
+docker run -p 7860:7860 support-ops-env
+```
+
+## Verification status
+Verified in this workspace:
+- `python -m pytest` passes with 12 tests
+- `openenv validate` passes
+- FastAPI smoke checks for `/` and `/reset` pass
+- `uv.lock` has been generated
+- `inference.py` resolves standard OpenAI env vars and compatible Groq/xAI aliases
+- `inference.py` has been run successfully against a Groq-compatible backend
+- `docker build -t support-ops-env .` succeeds
+- `docker run -p 7860:7860 support-ops-env` succeeds
+- live container checks for `/`, `/reset`, `/step`, and `/state` succeed
+
+Still pending in this workspace:
+- Hugging Face Space deployment itself has not been executed from this workspace
+
+## Baseline scores
+Recorded baseline run in this workspace:
+- Provider path: OpenAI client against `https://api.groq.com/openai/v1`
+- Credential source: `GROQ_API_KEY`
+- Model: `llama3-8b-8192`
+- `billing_seat_adjustment`: `0.2750`
+- `login_incident_triage`: `0.2750`
+- `suspicious_admin_request`: `0.2500`
+- Overall mean: `0.2667`
+
+Equivalent spec-facing configuration for future runs:
+
+```bash
+OPENAI_API_KEY=...
+API_BASE_URL=https://api.groq.com/openai/v1
+MODEL_NAME=llama3-8b-8192
+python inference.py
+```

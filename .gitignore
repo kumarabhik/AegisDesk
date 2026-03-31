@@ -1,0 +1,12 @@
+.uv-cache/
+.sixth/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+pytest-cache-files-*/
+.venv/
+venv/
+dist/
+build/

@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-support-ops-env"
+version = "0.1.0"
+description = "OpenEnv environment for B2B SaaS support operations"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "openai>=1.54.0",
+  "openenv-core[core]>=0.2.1",
+  "pydantic>=2.8.0",
+  "pyyaml>=6.0.2",
+  "requests>=2.32.0",
+  "uvicorn[standard]>=0.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-cov>=5.0.0",
+]
+
+[project.scripts]
+server = "support_ops_env.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["support_ops_env", "support_ops_env.server"]
+package-dir = { "support_ops_env" = ".", "support_ops_env.server" = "server" }
+
+[tool.setuptools.package-data]
+support_ops_env = ["server/task_data/*.yaml", "*.md"]
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+norecursedirs = [
+  "pytest-cache-files-*",
+  "__pycache__",
+]

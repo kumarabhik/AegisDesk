@@ -1,0 +1,12 @@
+.git
+.pytest_cache
+.uv-cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+pytest-cache-files-*
+.venv
+venv
+dist
+build

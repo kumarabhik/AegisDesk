@@ -1,0 +1,151 @@
+task_id: billing_seat_adjustment
+difficulty: easy
+task_brief: >
+  You are on the SaaS support operations desk. The inbox contains multiple tickets,
+  but only one requires a billing correction right now. Identify the correct ticket,
+  inspect the right records, apply the exact credit, update ticket metadata, send a
+  structured billing reply, and finalize the case safely.
+primary_ticket_id: TICKET-1001
+max_steps: 12
+tickets:
+  - ticket_id: TICKET-1001
+    subject: "Invoice still shows 18 seats after our team dropped to 12"
+    from_contact: "Morgan Lee <morgan@acmecloud.io>"
+    account_id: "acct_acmecloud"
+    summary: "Customer says the March invoice still billed 18 seats even though seats were reduced to 12 last week."
+    priority: normal
+    status: open
+    tags: ["billing", "seat-change"]
+    allowed_actions:
+      - open_ticket
+      - inspect_record
+      - search_kb
+      - set_priority
+      - set_status
+      - add_tag
+      - apply_credit
+      - draft_reply
+      - finalize_resolution
+  - ticket_id: TICKET-1002
+    subject: "Can you add dark mode to the dashboard?"
+    from_contact: "Priya Nair <priya@betaapps.io>"
+    account_id: "acct_betaapps"
+    summary: "Feature request from a standard account."
+    priority: low
+    status: open
+    tags: ["feature-request"]
+    allowed_actions:
+      - open_ticket
+  - ticket_id: TICKET-1003
+    subject: "Where do I find the SSO setup guide?"
+    from_contact: "Helen Park <helen@solis.dev>"
+    account_id: "acct_solis"
+    summary: "Low urgency how-to question."
+    priority: low
+    status: open
+    tags: ["how-to"]
+    allowed_actions:
+      - open_ticket
+records:
+  - record_id: acct_acmecloud
+    kind: account
+    title: "Account snapshot: Acme Cloud"
+    body: "Plan: Growth Annual. Seat count now 12. Seat count until Feb 21 was 18. Billing contact Morgan Lee is approved."
+    related_ticket_ids: ["TICKET-1001"]
+    keywords: ["account", "seats", "billing"]
+  - record_id: inv_mar_4482
+    kind: invoice
+    title: "Invoice INV-4482"
+    body: "March invoice billed 18 seats at 40 USD each. Overcharge amount eligible for credit: 240 USD."
+    related_ticket_ids: ["TICKET-1001"]
+    keywords: ["invoice", "credit", "billing", "march"]
+  - record_id: contract_acmecloud
+    kind: contract
+    title: "Contract addendum"
+    body: "Mid-cycle seat reductions are credited on the next invoice or can be manually credited by support operations."
+    related_ticket_ids: ["TICKET-1001"]
+    keywords: ["contract", "credit", "policy"]
+kb_articles:
+  - article_id: kb_seat_credit_policy
+    title: "Seat reduction credit policy"
+    summary: "Explains when manual credits can be issued after seat reductions."
+    content: "Support may issue a credit when seat reductions post after invoice generation. Confirm account count and invoice first."
+    keywords: ["seat", "credit", "policy", "billing", "invoice"]
+rubric:
+  - check_id: select_primary
+    label: "Select the primary billing ticket"
+    weight: 0.15
+    kind: selected_ticket
+    params:
+      ticket_id: TICKET-1001
+  - check_id: inspect_required_records
+    label: "Inspect account and invoice"
+    weight: 0.25
+    kind: viewed_records_all
+    params:
+      record_ids: ["acct_acmecloud", "inv_mar_4482"]
+  - check_id: apply_exact_credit
+    label: "Apply the exact billing credit"
+    weight: 0.25
+    kind: exact_credit
+    params:
+      ticket_id: TICKET-1001
+      amount: 240.0
+      currency: "USD"
+  - check_id: add_billing_tag
+    label: "Add resolution tag"
+    weight: 0.1
+    kind: tag_added
+    params:
+      ticket_id: TICKET-1001
+      tag: "credit-approved"
+  - check_id: resolve_ticket
+    label: "Mark ticket resolved"
+    weight: 0.1
+    kind: ticket_status
+    params:
+      ticket_id: TICKET-1001
+      status: "resolved"
+  - check_id: use_reply_template
+    label: "Use the billing resolution reply template"
+    weight: 0.05
+    kind: reply_template
+    params:
+      template_id: "billing_credit_resolution"
+  - check_id: include_reply_items
+    label: "Include key billing reply points"
+    weight: 0.05
+    kind: reply_contains
+    params:
+      checklist:
+        - "acknowledge_billing_error"
+        - "confirm_credit_amount"
+        - "explain_next_invoice"
+  - check_id: finalize_correctly
+    label: "Finalize with the correct resolution code"
+    weight: 0.05
+    kind: final_resolution_code
+    params:
+      resolution_code: "billing_credit_applied"
+forbidden_actions:
+  - action_type: escalate
+    conditions:
+      escalation_team: "security"
+    reason: "Security escalation is unnecessary for a routine billing correction."
+    penalty: 0.08
+    terminal: false
+reply_requirements:
+  template_id: "billing_credit_resolution"
+  checklist:
+    - "acknowledge_billing_error"
+    - "confirm_credit_amount"
+    - "explain_next_invoice"
+oracle_reference_path:
+  - "open_ticket TICKET-1001"
+  - "inspect_record acct_acmecloud"
+  - "inspect_record inv_mar_4482"
+  - "apply_credit 240 USD"
+  - "add_tag credit-approved"
+  - "set_status resolved"
+  - "draft_reply billing_credit_resolution"
+  - "finalize_resolution billing_credit_applied"
