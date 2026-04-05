@@ -10,3 +10,4 @@ pytest-cache-files-*/
 venv/
 dist/
 build/
+Hello everyone.docx
