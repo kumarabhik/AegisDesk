@@ -27,6 +27,7 @@ dev = [
 [project.scripts]
 server = "support_ops_env.server.app:main"
 verify-space = "support_ops_env.verify_space:main"
+submission-audit = "support_ops_env.submission_audit:main"
 
 [tool.setuptools]
 include-package-data = true

@@ -42,12 +42,13 @@ Use this section to quickly restore project context if a future coding session l
 ## Status Snapshot
 Current implementation and deployment status:
 
-- local tests pass with 14 tests
+- local tests pass with 17 tests
 - `openenv validate` passes
 - local Docker build/run has been verified
 - the Hugging Face Space is live at `https://i4mgr00t-meta.hf.space/`
 - the live Space responds successfully to `/`, `/reset`, `/step`, and `/state`
 - the hackathon submission path uses `HF_TOKEN` with `https://router.huggingface.co/v1`
+- reusable verification helpers exist at `verify_space.py` and `submission_audit.py`
 - a live HF-router baseline run against the deployed Space produces:
   - `billing_seat_adjustment`: `0.2750`
   - `login_incident_triage`: `0.2750`

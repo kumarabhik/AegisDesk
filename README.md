@@ -155,6 +155,7 @@ python -m pytest
 openenv validate
 python verify_space.py --base-url http://127.0.0.1:7860
 verify-space --base-url http://127.0.0.1:7860
+submission-audit --space-url https://i4mgr00t-meta.hf.space
 docker build -t support-ops-env .
 docker run -p 7860:7860 support-ops-env
 ```
@@ -164,11 +165,12 @@ Live Space verification:
 ```bash
 python verify_space.py --base-url https://i4mgr00t-meta.hf.space
 verify-space --base-url https://i4mgr00t-meta.hf.space
+submission-audit --space-url https://i4mgr00t-meta.hf.space
 ```
 
 ## Verification status
 Verified in this workspace:
-- `python -m pytest` passes with 14 tests
+- `python -m pytest` passes with 17 tests
 - `openenv validate` passes
 - FastAPI smoke checks for `/` and `/reset` pass
 - `uv.lock` has been generated
@@ -227,6 +229,7 @@ python inference.py
 - Space URL is live: `https://i4mgr00t-meta.hf.space/`
 - `python verify_space.py --base-url https://i4mgr00t-meta.hf.space` succeeds
 - `verify-space --base-url https://i4mgr00t-meta.hf.space` succeeds
+- `submission-audit --space-url https://i4mgr00t-meta.hf.space` succeeds
 - `python inference.py` succeeds with `HF_TOKEN`, `API_BASE_URL`, `MODEL_NAME`, and `ENV_BASE_URL` set
 - `python -m pytest` passes
 - `openenv validate` passes
