@@ -135,7 +135,7 @@ Exit criteria:
 - The project is ready to push to a Hugging Face Space tagged `openenv`.
 
 Current status:
-- `python -m pytest` passes locally with 14 tests.
+- `python -m pytest` passes locally with 20 tests.
 - `openenv validate` passes locally.
 - `docker build` succeeds locally.
 - `docker run` succeeds locally.
@@ -164,7 +164,7 @@ Exit criteria:
 Current status:
 - Core environment implementation is complete and locally verified.
 - `inference.py` now prefers `HF_TOKEN` plus `https://router.huggingface.co/v1` and this path is covered by tests.
-- `python -m pytest` passes locally with 14 tests after the HF-router updates.
+- `python -m pytest` passes locally with 20 tests after the final hardening updates.
 - HF CLI authentication is configured locally and the Space variables/secrets were set through the HF API.
 - The Hugging Face Space remote now points to the project commit and the live `.hf.space` URL returns `200`.
 - Live checks for `/`, `/reset`, `/step`, and `/state` succeed.
@@ -185,6 +185,22 @@ Current status:
 - `verify_space.py` is the reusable live/local verification helper for `/`, `/reset`, `/step`, and `/state`.
 - README includes a final submission checklist and live verification command.
 - The design doc now includes a deployment status snapshot with the live Space URL and baseline scores.
+
+## [x] Phase 10: Submission audit and executive polish
+Deliverables:
+- Add a single-command submission audit that covers tests, validator status, remote head, and live Space health.
+- Surface the new audit path in the README alongside the existing verification helper.
+- Refresh roadmap metrics so the tracked counts and deployment state match the live repo.
+
+Exit criteria:
+- `submission-audit --space-url https://i4mgr00t-meta.hf.space` succeeds.
+- README exposes both the quick verifier and the full submission audit.
+- Roadmap status reflects the actual final state of the project.
+
+Current status:
+- `submission_audit.py` provides a compact JSON readiness report for local and live checks.
+- `tests/test_submission_audit.py` covers the audit helper logic.
+- The project now has 20 passing tests and a reusable final verification workflow.
 
 ## Cross-cutting quality gates
 These checks apply throughout the project:

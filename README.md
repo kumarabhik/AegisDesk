@@ -91,6 +91,8 @@ Key files:
 - `server/reward.py`
 - `server/task_data/*.yaml`
 - `inference.py`
+- `verify_space.py`
+- `submission_audit.py`
 - `openenv.yaml`
 
 ## Setup
@@ -181,6 +183,7 @@ Verified in this workspace:
 - `docker build -t support-ops-env .` succeeds
 - `docker run -p 7860:7860 support-ops-env` succeeds
 - live container checks for `/`, `/reset`, `/step`, and `/state` succeed
+- `submission-audit --space-url https://i4mgr00t-meta.hf.space` succeeds
 - Hugging Face Space deployment is live and verified at `https://i4mgr00t-meta.hf.space/`
 - live Space checks for `/`, `/reset`, `/step`, and `/state` succeed
 
