@@ -12,6 +12,13 @@ def test_root_healthcheck_returns_200() -> None:
     assert response.json()["env_name"] == "support_ops_env"
 
 
+def test_health_endpoint_returns_200() -> None:
+    client = TestClient(app)
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] in {"ok", "healthy"}
+
+
 def test_reset_endpoint_returns_step_payload_shape() -> None:
     client = TestClient(app)
     response = client.post("/reset", json={"task_id": "billing_seat_adjustment", "seed": 1})

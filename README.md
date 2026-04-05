@@ -11,6 +11,7 @@ tags:
 `support_ops_env` is a real-world OpenEnv benchmark for B2B SaaS support operations. Each episode presents a small inbox of 2-3 tickets. The agent must identify the primary case, inspect the right internal records, take safe operational actions, draft a structured customer reply, and finalize the case.
 
 If you prefer a longer, blog-style explanation of what the project does, how the environment works, and how to run and verify it end to end, read `PROJECT_WALKTHROUGH.md`.
+If you want a more professional, judge-facing explanation of the benchmark’s purpose and what makes it distinctive, read `SUBMISSION_OVERVIEW.md`.
 
 ## Why this environment exists
 - It models a genuine human workflow instead of a toy task.
@@ -95,6 +96,9 @@ Key files:
 - `inference.py`
 - `verify_space.py`
 - `submission_audit.py`
+- `.env.example`
+- `PROJECT_WALKTHROUGH.md`
+- `SUBMISSION_OVERVIEW.md`
 - `openenv.yaml`
 
 ## Setup
@@ -103,6 +107,8 @@ Install dependencies:
 ```bash
 pip install -e .
 ```
+
+If you want a simple starting point for environment variables, copy values from `.env.example` into your shell or local environment manager. The file does not contain secrets, only placeholders and the expected variable names.
 
 Run the server locally:
 
@@ -174,9 +180,10 @@ submission-audit --space-url https://i4mgr00t-meta.hf.space
 
 ## Verification status
 Verified in this workspace:
-- `python -m pytest` passes with 17 tests
+- `python -m pytest` passes with 21 tests
 - `openenv validate` passes
 - FastAPI smoke checks for `/` and `/reset` pass
+- FastAPI health checks for `/` and `/health` pass
 - `uv.lock` has been generated
 - `inference.py` resolves `HF_TOKEN` plus the Hugging Face router as the preferred submission path
 - `inference.py` still supports standard OpenAI env vars and compatible Groq/xAI aliases as fallbacks

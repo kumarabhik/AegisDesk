@@ -135,7 +135,7 @@ Exit criteria:
 - The project is ready to push to a Hugging Face Space tagged `openenv`.
 
 Current status:
-- `python -m pytest` passes locally with 20 tests.
+- `python -m pytest` passes locally with 21 tests.
 - `openenv validate` passes locally.
 - `docker build` succeeds locally.
 - `docker run` succeeds locally.
@@ -164,7 +164,7 @@ Exit criteria:
 Current status:
 - Core environment implementation is complete and locally verified.
 - `inference.py` now prefers `HF_TOKEN` plus `https://router.huggingface.co/v1` and this path is covered by tests.
-- `python -m pytest` passes locally with 20 tests after the final hardening updates.
+- `python -m pytest` passes locally with 21 tests after the final hardening updates.
 - HF CLI authentication is configured locally and the Space variables/secrets were set through the HF API.
 - The Hugging Face Space remote now points to the project commit and the live `.hf.space` URL returns `200`.
 - Live checks for `/`, `/reset`, `/step`, and `/state` succeed.
@@ -200,7 +200,23 @@ Exit criteria:
 Current status:
 - `submission_audit.py` provides a compact JSON readiness report for local and live checks.
 - `tests/test_submission_audit.py` covers the audit helper logic.
-- The project now has 20 passing tests and a reusable final verification workflow.
+- The project now has 21 passing tests and a reusable final verification workflow.
+
+## [x] Phase 11: Narrative and operator documentation
+Deliverables:
+- Add a long-form, blog-style walkthrough for readers who prefer explanation over checklist-style docs.
+- Add a polished, submission-facing narrative that explains the benchmark’s real-world value and what makes it distinctive.
+- Add a checked-in `.env.example` so local setup is easier without ever committing secrets.
+
+Exit criteria:
+- A new reader can understand the project, run it, and verify it without relying on chat history.
+- The repo includes both operator documentation and a judge-facing benchmark narrative.
+- Local setup variables are documented in a non-secret example file.
+
+Current status:
+- `PROJECT_WALKTHROUGH.md` explains the project, architecture, run flow, and verification flow in a blog-style format.
+- `SUBMISSION_OVERVIEW.md` provides a more polished and professional benchmark narrative.
+- `.env.example` documents the expected environment variables without storing secrets.
 
 ## Cross-cutting quality gates
 These checks apply throughout the project:

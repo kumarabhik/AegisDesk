@@ -106,6 +106,13 @@ def root() -> dict[str, str]:
     return {"status": "ok", "env_name": "support_ops_env"}
 
 
+@app.get("/health")
+def health() -> dict[str, str]:
+    """Dedicated health endpoint for container and uptime checks."""
+
+    return {"status": "ok", "env_name": "support_ops_env"}
+
+
 def main() -> None:
     """Run the app with uvicorn."""
 
