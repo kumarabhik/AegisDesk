@@ -169,6 +169,23 @@ Current status:
 - The Hugging Face Space remote now points to the project commit and the live `.hf.space` URL returns `200`.
 - Live checks for `/`, `/reset`, `/step`, and `/state` succeed.
 
+## [x] Phase 9: Final hardening and submission checks
+Deliverables:
+- Add a reusable verification helper for local and live HTTP endpoint checks.
+- Document a concise final submission checklist in the README.
+- Sync the design doc with the final deployed state so the repo is self-describing.
+- Re-run validation and live checks after the hardening pass.
+
+Exit criteria:
+- A single command can verify the root, reset, step, and state endpoints of the running service.
+- The README contains a final checklist that can be followed without chat context.
+- The design doc reflects the final live deployment status and baseline path.
+
+Current status:
+- `verify_space.py` is the reusable live/local verification helper for `/`, `/reset`, `/step`, and `/state`.
+- README includes a final submission checklist and live verification command.
+- The design doc now includes a deployment status snapshot with the live Space URL and baseline scores.
+
 ## Cross-cutting quality gates
 These checks apply throughout the project:
 - deterministic grading only

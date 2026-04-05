@@ -39,6 +39,26 @@ Use this section to quickly restore project context if a future coding session l
   - `server/reward.py`
   - `server/fixtures.py`
 
+## Status Snapshot
+Current implementation and deployment status:
+
+- local tests pass with 14 tests
+- `openenv validate` passes
+- local Docker build/run has been verified
+- the Hugging Face Space is live at `https://i4mgr00t-meta.hf.space/`
+- the live Space responds successfully to `/`, `/reset`, `/step`, and `/state`
+- the hackathon submission path uses `HF_TOKEN` with `https://router.huggingface.co/v1`
+- a live HF-router baseline run against the deployed Space produces:
+  - `billing_seat_adjustment`: `0.2750`
+  - `login_incident_triage`: `0.2750`
+  - `suspicious_admin_request`: `0.2500`
+  - overall mean: `0.2667`
+
+Remaining non-code work is mainly submission/admin:
+- keep the Space URL available for the hackathon form
+- avoid rotating or leaking the active Hugging Face token unless necessary
+- make any final submissions against the latest pushed Space revision
+
 ## Goals
 - Implement the full OpenEnv interface with typed Pydantic models and validator-friendly packaging.
 - Simulate a real support workflow with clear state transitions and hidden internal truth.

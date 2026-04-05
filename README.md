@@ -153,8 +153,15 @@ Recommended checks:
 ```bash
 python -m pytest
 openenv validate
+python verify_space.py --base-url http://127.0.0.1:7860
 docker build -t support-ops-env .
 docker run -p 7860:7860 support-ops-env
+```
+
+Live Space verification:
+
+```bash
+python verify_space.py --base-url https://i4mgr00t-meta.hf.space
 ```
 
 ## Verification status
@@ -213,3 +220,11 @@ MODEL_NAME=Qwen/Qwen2.5-7B-Instruct-1M
 ENV_BASE_URL=https://i4mgr00t-meta.hf.space
 python inference.py
 ```
+
+## Final submission checklist
+- Space URL is live: `https://i4mgr00t-meta.hf.space/`
+- `python verify_space.py --base-url https://i4mgr00t-meta.hf.space` succeeds
+- `python inference.py` succeeds with `HF_TOKEN`, `API_BASE_URL`, `MODEL_NAME`, and `ENV_BASE_URL` set
+- `python -m pytest` passes
+- `openenv validate` passes
+- the latest Hugging Face Space commit is the intended submission revision
