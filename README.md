@@ -11,7 +11,7 @@ tags:
 `support_ops_env` is a real-world OpenEnv benchmark for B2B SaaS support operations. Each episode presents a small inbox of 2-3 tickets. The agent must identify the primary case, inspect the right internal records, take safe operational actions, draft a structured customer reply, and finalize the case.
 
 If you prefer a longer, blog-style explanation of what the project does, how the environment works, and how to run and verify it end to end, read `PROJECT_WALKTHROUGH.md`.
-If you want a more professional, judge-facing explanation of the benchmark’s purpose and what makes it distinctive, read `SUBMISSION_OVERVIEW.md`.
+If you want a more professional, judge-facing explanation of the benchmark's purpose and what makes it distinctive, read `SUBMISSION_OVERVIEW.md`.
 
 ## Why this environment exists
 - It models a genuine human workflow instead of a toy task.
@@ -96,6 +96,8 @@ Key files:
 - `inference.py`
 - `verify_space.py`
 - `submission_audit.py`
+- `run_local_stack.py`
+- `env_doctor.py`
 - `.env.example`
 - `PROJECT_WALKTHROUGH.md`
 - `SUBMISSION_OVERVIEW.md`
@@ -110,6 +112,13 @@ pip install -e .
 
 If you want a simple starting point for environment variables, copy values from `.env.example` into your shell or local environment manager. The file does not contain secrets, only placeholders and the expected variable names.
 
+If you want a non-secret check of whether your local inference configuration is ready, run:
+
+```bash
+python env_doctor.py
+env-doctor
+```
+
 Run the server locally:
 
 ```bash
@@ -120,6 +129,13 @@ Or with uvicorn:
 
 ```bash
 uvicorn server.app:app --host 0.0.0.0 --port 7860
+```
+
+If you want a one-command local bootstrap that starts the server if needed, waits for health, verifies the API, and then shuts the local process down again, run:
+
+```bash
+python run_local_stack.py
+run-local-stack
 ```
 
 ## Baseline inference
@@ -165,6 +181,10 @@ python -m pytest
 openenv validate
 python verify_space.py --base-url http://127.0.0.1:7860
 verify-space --base-url http://127.0.0.1:7860
+python run_local_stack.py
+run-local-stack
+python env_doctor.py
+env-doctor
 submission-audit --space-url https://i4mgr00t-meta.hf.space
 docker build -t support-ops-env .
 docker run -p 7860:7860 support-ops-env
@@ -184,6 +204,8 @@ Verified in this workspace:
 - `openenv validate` passes
 - FastAPI smoke checks for `/` and `/reset` pass
 - FastAPI health checks for `/` and `/health` pass
+- `run-local-stack` provides a one-command local start plus verification path
+- `env-doctor` provides a non-secret environment readiness check
 - `uv.lock` has been generated
 - `inference.py` resolves `HF_TOKEN` plus the Hugging Face router as the preferred submission path
 - `inference.py` still supports standard OpenAI env vars and compatible Groq/xAI aliases as fallbacks

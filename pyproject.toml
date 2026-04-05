@@ -28,6 +28,8 @@ dev = [
 server = "support_ops_env.server.app:main"
 verify-space = "support_ops_env.verify_space:main"
 submission-audit = "support_ops_env.submission_audit:main"
+run-local-stack = "support_ops_env.run_local_stack:main"
+env-doctor = "support_ops_env.env_doctor:main"
 
 [tool.setuptools]
 include-package-data = true
