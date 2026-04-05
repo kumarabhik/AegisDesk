@@ -30,6 +30,7 @@ Choose only one action at a time.
 Use the visible inbox, focus panel, and available record ids.
 Do not wrap JSON in markdown.
 """.strip()
+HF_ROUTER_BASE_URL = "https://router.huggingface.co/v1"
 
 
 @dataclass(frozen=True)
@@ -55,12 +56,14 @@ def _first_env(*names: str) -> tuple[str | None, str | None]:
 def resolve_inference_config() -> InferenceConfig:
     """Resolve credentials for OpenAI-compatible providers.
 
-    The submission contract still prefers `OPENAI_API_KEY`, `MODEL_NAME`, and
-    `API_BASE_URL`, but local runs may reuse compatible provider aliases such as
-    Groq or xAI.
+    Preferred order:
+    1. Hackathon path via `HF_TOKEN` and the Hugging Face router
+    2. Generic OpenAI-compatible path via `OPENAI_API_KEY`
+    3. Local compatibility aliases such as Groq or xAI
     """
 
     api_key, api_key_name = _first_env(
+        "HF_TOKEN",
         "OPENAI_API_KEY",
         "GROQ_API_KEY",
         "XAI_API_KEY",
@@ -72,17 +75,20 @@ def resolve_inference_config() -> InferenceConfig:
         "XAI_MODEL",
         "GROK_MODEL",
     )
-    api_base_url, _ = _first_env(
-        "API_BASE_URL",
-        "GROQ_BASE_URL",
-        "XAI_BASE_URL",
-        "GROK_BASE_URL",
-    )
+    if api_key_name == "HF_TOKEN":
+        api_base_url = os.getenv("API_BASE_URL", "").strip() or HF_ROUTER_BASE_URL
+    else:
+        api_base_url, _ = _first_env(
+            "API_BASE_URL",
+            "GROQ_BASE_URL",
+            "XAI_BASE_URL",
+            "GROK_BASE_URL",
+        )
 
     if not api_key:
         raise RuntimeError(
-            "OPENAI_API_KEY is required to run inference.py. "
-            "For OpenAI-compatible providers, GROQ_API_KEY, XAI_API_KEY, or "
+            "HF_TOKEN or OPENAI_API_KEY is required to run inference.py. "
+            "For compatible local providers, GROQ_API_KEY, XAI_API_KEY, or "
             "GROK_API_KEY may also be used."
         )
     if not model_name:
@@ -92,7 +98,7 @@ def resolve_inference_config() -> InferenceConfig:
             "GROK_MODEL may also be used."
         )
 
-    credential_source = api_key_name or "OPENAI_API_KEY"
+    credential_source = api_key_name or "HF_TOKEN"
     return InferenceConfig(
         api_key=api_key,
         model_name=model_name,

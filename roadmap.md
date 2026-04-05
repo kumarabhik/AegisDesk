@@ -6,7 +6,7 @@
 - `[ ]` Not started
 
 ## Summary
-This roadmap turns `support_ops_env` from an empty repo into a complete OpenEnv project for B2B SaaS support operations. The work is organized to reduce validator risk early, then layer in task content, dense rewards, inference reproducibility, and deployment readiness.
+This roadmap turns `support_ops_env` from an empty repo into a complete OpenEnv project for B2B SaaS support operations. The work is organized to reduce validator risk early, then layer in task content, dense rewards, inference reproducibility, hackathon-compliant HF-router inference, and deployment readiness.
 
 ## [x] Phase 0: Planning and project definition
 Deliverables:
@@ -116,6 +116,7 @@ Current status:
 - `inference.py` is implemented with OpenAI-env defaults plus Groq/xAI-compatible aliases.
 - README is implemented and now includes verified local validation status plus recorded baseline scores.
 - A real baseline run completed successfully in under 2 minutes with a mean score of `0.2667`.
+- Hackathon-specific HF router and `HF_TOKEN` compliance is still pending.
 
 ## [~] Phase 7: Validation and deployment
 Deliverables:
@@ -140,6 +141,32 @@ Current status:
 - `docker run` succeeds locally.
 - live container checks for `/`, `/reset`, `/step`, and `/state` succeed.
 - Hugging Face Space deployment itself is still pending.
+
+## [~] Phase 8: Hackathon submission compliance
+Deliverables:
+- Update `inference.py` so the preferred submission path uses `HF_TOKEN` with the Hugging Face router.
+- Update `README.md`, `design_doc.md`, and `roadmap.md` so the documented setup matches the hackathon guidance.
+- Push the repo to the Hugging Face Space and configure the required variables/secrets.
+- Verify the live Space returns `200` and supports `/`, `/reset`, `/step`, and `/state`.
+- Record the final submission-ready baseline path and final deployment status.
+
+Implementation notes:
+- Keep using the OpenAI Python client, but point it at `https://router.huggingface.co/v1` for the official hackathon path.
+- Treat Groq/xAI aliases as local development fallbacks rather than the default documented path.
+- The final submission should rely on `HF_TOKEN` rather than a paid OpenAI key.
+
+Exit criteria:
+- `inference.py` works with `HF_TOKEN` and the Hugging Face router.
+- The Hugging Face Space is live and reachable.
+- README instructions are fully aligned with what the judges will run.
+- The latest pushed submission is the intended final candidate.
+
+Current status:
+- Core environment implementation is complete and locally verified.
+- `inference.py` now prefers `HF_TOKEN` plus `https://router.huggingface.co/v1` and this path is covered by tests.
+- `python -m pytest` now passes locally with 14 tests after the HF-router updates.
+- No `HF_TOKEN` or active `hf auth` session is available in this workspace yet.
+- The Hugging Face Space remote is still on the starter commit and the live `.hf.space` URL currently returns `503`.
 
 ## Cross-cutting quality gates
 These checks apply throughout the project:

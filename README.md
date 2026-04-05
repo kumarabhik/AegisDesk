@@ -113,17 +113,33 @@ uvicorn server.app:app --host 0.0.0.0 --port 7860
 ```
 
 ## Baseline inference
-The root `inference.py` script uses the OpenAI client and expects:
-- `OPENAI_API_KEY`
+The root `inference.py` script uses the OpenAI client.
+
+Hackathon-preferred configuration:
+- `HF_TOKEN`
 - `MODEL_NAME`
-- `API_BASE_URL` (optional for OpenAI-compatible endpoints)
+- `API_BASE_URL` (optional, defaults to `https://router.huggingface.co/v1` when `HF_TOKEN` is used)
 - `ENV_BASE_URL` (optional if connecting to a running server; otherwise it uses the local in-process environment)
 
-For local runs with compatible providers, `inference.py` also accepts these aliases:
+Compatibility fallback configuration:
+- `OPENAI_API_KEY`
+- `MODEL_NAME`
+- `API_BASE_URL`
+
+For local runs with other compatible providers, `inference.py` also accepts these aliases:
 - Groq: `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_BASE_URL`
 - xAI/Grok-style aliases: `XAI_API_KEY`, `XAI_MODEL`, `XAI_BASE_URL`, `GROK_API_KEY`, `GROK_MODEL`, `GROK_BASE_URL`
 
-This keeps the benchmark compliant with the required OpenAI client while still allowing OpenAI-compatible backends.
+This keeps the benchmark compliant with the required OpenAI client while aligning the official submission path with the Hugging Face router.
+
+Hackathon-ready example:
+
+```bash
+HF_TOKEN=...
+API_BASE_URL=https://router.huggingface.co/v1
+MODEL_NAME=<hf-routable-model>
+python inference.py
+```
 
 Run it with:
 
@@ -143,17 +159,19 @@ docker run -p 7860:7860 support-ops-env
 
 ## Verification status
 Verified in this workspace:
-- `python -m pytest` passes with 12 tests
+- `python -m pytest` passes with 14 tests
 - `openenv validate` passes
 - FastAPI smoke checks for `/` and `/reset` pass
 - `uv.lock` has been generated
-- `inference.py` resolves standard OpenAI env vars and compatible Groq/xAI aliases
+- `inference.py` resolves `HF_TOKEN` plus the Hugging Face router as the preferred submission path
+- `inference.py` still supports standard OpenAI env vars and compatible Groq/xAI aliases as fallbacks
 - `inference.py` has been run successfully against a Groq-compatible backend
 - `docker build -t support-ops-env .` succeeds
 - `docker run -p 7860:7860 support-ops-env` succeeds
 - live container checks for `/`, `/reset`, `/step`, and `/state` succeed
 
 Still pending in this workspace:
+- a baseline run through the Hugging Face router using `HF_TOKEN`
 - Hugging Face Space deployment itself has not been executed from this workspace
 
 ## Baseline scores
@@ -166,7 +184,9 @@ Recorded baseline run in this workspace:
 - `suspicious_admin_request`: `0.2500`
 - Overall mean: `0.2667`
 
-Equivalent spec-facing configuration for future runs:
+This recorded run used the local compatibility fallback rather than the hackathon-preferred HF router path.
+
+Equivalent compatibility configuration for future runs:
 
 ```bash
 OPENAI_API_KEY=...

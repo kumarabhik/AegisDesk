@@ -29,6 +29,7 @@ Use this section to quickly restore project context if a future coding session l
 - Reply design: `draft_reply` must use structured fields like `template_id` and `reply_checklist`; optional freeform notes are not graded
 - Runtime rule: no external SaaS APIs or live data sources during environment execution; all tasks are fixture-driven and in-memory
 - Deployment targets: local Docker, OpenEnv validation, root `inference.py`, and Hugging Face Spaces on port `7860`
+- Hackathon submission mode: use the OpenAI client against the Hugging Face router with `HF_TOKEN`, `API_BASE_URL=https://router.huggingface.co/v1`, and a Hugging Face-routable `MODEL_NAME`
 - Main implementation modules to build next:
   - `models.py`
   - `client.py`
@@ -44,6 +45,7 @@ Use this section to quickly restore project context if a future coding session l
 - Ship exactly 3 canonical tasks with deterministic graders and meaningful difficulty progression.
 - Provide dense reward shaping based on rubric progress, not binary end-only success.
 - Support reproducible local runs, Docker execution, Hugging Face Spaces deployment, and a baseline inference script using the OpenAI client.
+- Keep the hackathon submission path compliant with the guidance to use a Hugging Face token plus the Hugging Face router rather than requiring a paid OpenAI key.
 
 ## Non-Goals
 - No live integration with SaaS systems, ticketing providers, or external databases.
@@ -449,11 +451,19 @@ Unsafe actions should:
 ### Script contract
 `inference.py` must live at repo root and:
 - use the OpenAI Python client only
-- read `OPENAI_API_KEY`, `API_BASE_URL`, `MODEL_NAME`
+- support two config paths:
+  - hackathon-preferred: `HF_TOKEN`, `API_BASE_URL=https://router.huggingface.co/v1`, `MODEL_NAME`
+  - compatibility fallback: `OPENAI_API_KEY`, `API_BASE_URL`, `MODEL_NAME`
 - optionally read `TEMPERATURE`, `MAX_STEPS`, and a local/base URL selector
 - run with `temperature=0` by default
 - evaluate all 3 tasks in fixed order
 - print per-task scores and overall mean
+
+Hackathon notes:
+- `HF_TOKEN` should be sufficient for the official submission path
+- `API_BASE_URL` should default to the Hugging Face router if unset in hackathon mode
+- `MODEL_NAME` should be a model available through the Hugging Face router
+- the script should not force participants to purchase or provide an OpenAI-specific key
 
 ### Prompting contract
 Baseline behavior:
@@ -468,6 +478,14 @@ Baseline behavior:
 - no sampling above zero temperature by default
 - no external retrieval
 - final output includes machine-readable scores for automation
+
+### Provider resolution policy
+Preferred resolution order for submission readiness:
+1. `HF_TOKEN` + `API_BASE_URL` or the default Hugging Face router URL
+2. `OPENAI_API_KEY` for generic OpenAI-compatible execution
+3. local compatibility aliases such as Groq/xAI only as non-hackathon fallbacks
+
+This keeps the implementation flexible for local development while aligning the default documented path with the hackathon guidance.
 
 ## Packaging and Deployment
 
@@ -493,6 +511,12 @@ Deployment target:
 - Docker-based HF Space
 - tagged with `openenv`
 - health check should return 200 and support `reset()`
+
+Expected Space settings:
+- Variable: `API_BASE_URL=https://router.huggingface.co/v1`
+- Variable: `MODEL_NAME=<HF-routable-model>`
+- Secret: `HF_TOKEN=<hugging-face-token>`
+- optional compatibility secret: `OPENAI_API_KEY` only if a non-HF fallback path is intentionally used
 
 ## Testing Strategy
 
@@ -525,10 +549,11 @@ The project is complete when:
 - `inference.py` runs end-to-end with reproducible outputs
 - Docker builds locally and the service responds correctly
 - the README and deployment artifacts are aligned with actual behavior
+- the hackathon submission path is validated with `HF_TOKEN` plus the Hugging Face router
 
 ## Assumptions
 - Python 3.11 is the implementation target.
 - All task content is fixture-driven and in-memory.
 - Only 3 official tasks are required for v1, but the fixture system should support later expansion.
 - Structured reply templates are preferred over free-text evaluation.
-- `HF_TOKEN` is needed for deployment workflows, not core execution.
+- `HF_TOKEN` is needed for hackathon inference and deployment workflows.
