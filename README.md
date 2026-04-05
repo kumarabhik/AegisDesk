@@ -166,13 +166,12 @@ Verified in this workspace:
 - `inference.py` resolves `HF_TOKEN` plus the Hugging Face router as the preferred submission path
 - `inference.py` still supports standard OpenAI env vars and compatible Groq/xAI aliases as fallbacks
 - `inference.py` has been run successfully against a Groq-compatible backend
+- `inference.py` has been run successfully against the Hugging Face router using `HF_TOKEN`
 - `docker build -t support-ops-env .` succeeds
 - `docker run -p 7860:7860 support-ops-env` succeeds
 - live container checks for `/`, `/reset`, `/step`, and `/state` succeed
-
-Still pending in this workspace:
-- a baseline run through the Hugging Face router using `HF_TOKEN`
-- Hugging Face Space deployment itself has not been executed from this workspace
+- Hugging Face Space deployment is live and verified at `https://i4mgr00t-meta.hf.space/`
+- live Space checks for `/`, `/reset`, `/step`, and `/state` succeed
 
 ## Baseline scores
 Recorded baseline run in this workspace:
@@ -186,11 +185,31 @@ Recorded baseline run in this workspace:
 
 This recorded run used the local compatibility fallback rather than the hackathon-preferred HF router path.
 
+Recorded hackathon-path baseline run in this workspace:
+- Provider path: OpenAI client against `https://router.huggingface.co/v1`
+- Credential source: `HF_TOKEN`
+- Model: `Qwen/Qwen2.5-7B-Instruct-1M`
+- Environment target: `https://i4mgr00t-meta.hf.space`
+- `billing_seat_adjustment`: `0.2750`
+- `login_incident_triage`: `0.2750`
+- `suspicious_admin_request`: `0.2500`
+- Overall mean: `0.2667`
+
 Equivalent compatibility configuration for future runs:
 
 ```bash
 OPENAI_API_KEY=...
 API_BASE_URL=https://api.groq.com/openai/v1
 MODEL_NAME=llama3-8b-8192
+python inference.py
+```
+
+Equivalent hackathon configuration:
+
+```bash
+HF_TOKEN=...
+API_BASE_URL=https://router.huggingface.co/v1
+MODEL_NAME=Qwen/Qwen2.5-7B-Instruct-1M
+ENV_BASE_URL=https://i4mgr00t-meta.hf.space
 python inference.py
 ```

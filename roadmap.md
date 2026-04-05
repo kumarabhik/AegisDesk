@@ -116,9 +116,9 @@ Current status:
 - `inference.py` is implemented with OpenAI-env defaults plus Groq/xAI-compatible aliases.
 - README is implemented and now includes verified local validation status plus recorded baseline scores.
 - A real baseline run completed successfully in under 2 minutes with a mean score of `0.2667`.
-- Hackathon-specific HF router and `HF_TOKEN` compliance is still pending.
+- A hackathon-path baseline run also completed successfully through the HF router with the same mean score of `0.2667`.
 
-## [~] Phase 7: Validation and deployment
+## [x] Phase 7: Validation and deployment
 Deliverables:
 - Add unit tests and integration smoke tests.
 - Run `openenv validate`.
@@ -135,14 +135,14 @@ Exit criteria:
 - The project is ready to push to a Hugging Face Space tagged `openenv`.
 
 Current status:
-- `python -m pytest` passes locally with 12 tests.
+- `python -m pytest` passes locally with 14 tests.
 - `openenv validate` passes locally.
 - `docker build` succeeds locally.
 - `docker run` succeeds locally.
 - live container checks for `/`, `/reset`, `/step`, and `/state` succeed.
-- Hugging Face Space deployment itself is still pending.
+- Hugging Face Space deployment is live and the public `.hf.space` root returns `200`.
 
-## [~] Phase 8: Hackathon submission compliance
+## [x] Phase 8: Hackathon submission compliance
 Deliverables:
 - Update `inference.py` so the preferred submission path uses `HF_TOKEN` with the Hugging Face router.
 - Update `README.md`, `design_doc.md`, and `roadmap.md` so the documented setup matches the hackathon guidance.
@@ -164,9 +164,10 @@ Exit criteria:
 Current status:
 - Core environment implementation is complete and locally verified.
 - `inference.py` now prefers `HF_TOKEN` plus `https://router.huggingface.co/v1` and this path is covered by tests.
-- `python -m pytest` now passes locally with 14 tests after the HF-router updates.
-- No `HF_TOKEN` or active `hf auth` session is available in this workspace yet.
-- The Hugging Face Space remote is still on the starter commit and the live `.hf.space` URL currently returns `503`.
+- `python -m pytest` passes locally with 14 tests after the HF-router updates.
+- HF CLI authentication is configured locally and the Space variables/secrets were set through the HF API.
+- The Hugging Face Space remote now points to the project commit and the live `.hf.space` URL returns `200`.
+- Live checks for `/`, `/reset`, `/step`, and `/state` succeed.
 
 ## Cross-cutting quality gates
 These checks apply throughout the project:
