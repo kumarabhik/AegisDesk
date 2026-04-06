@@ -7,6 +7,7 @@ import json
 import os
 import sys
 from typing import Any
+from collections.abc import Sequence
 
 
 DEFAULT_HF_BASE_URL = "https://router.huggingface.co/v1"
@@ -48,11 +49,11 @@ def inspect_environment(env: dict[str, str] | None = None) -> dict[str, Any]:
     }
 
 
-def main() -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Print a non-secret JSON summary of environment readiness."""
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.parse_args()
+    parser.parse_args([] if argv is None else list(argv))
     print(json.dumps(inspect_environment(), indent=2, sort_keys=True))
     return 0
 
