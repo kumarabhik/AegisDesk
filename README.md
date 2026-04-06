@@ -10,6 +10,12 @@ tags:
 
 `AegisDesk` is the public-facing name for `support_ops_env`, a real-world OpenEnv benchmark for B2B SaaS support operations. Each episode presents a small inbox of 2-3 tickets. The agent must identify the primary case, inspect the right internal records, take safe operational actions, draft a structured customer reply, and finalize the case.
 
+Quick links:
+- GitHub repo: `https://github.com/kumarabhik/AegisDesk`
+- Hugging Face Space: `https://huggingface.co/spaces/I4mGr00T/Meta`
+- Live app: `https://i4mgr00t-meta.hf.space`
+- Captured verification and benchmark outputs: `RESULTS.md`
+
 If you prefer a longer, blog-style explanation of what the project does, how the environment works, and how to run and verify it end to end, read `PROJECT_WALKTHROUGH.md`.
 If you want a more professional, judge-facing explanation of the benchmark's purpose and what makes it distinctive, read `SUBMISSION_OVERVIEW.md`.
 If you want a publish-ready article draft for Hugging Face or a blog platform, read `HF_ARTICLE_DRAFT.md`.
@@ -258,30 +264,23 @@ Verified in this workspace:
 - live container checks for `/`, `/reset`, `/step`, and `/state` succeed
 - `submission-audit --space-url https://i4mgr00t-meta.hf.space` succeeds
 - local mirror validator scripts exist at `validate-submission.sh` and `validate-submission.ps1`
+- the exact official pre-validation script passes locally against the live Space
 - Hugging Face Space deployment is live and verified at `https://i4mgr00t-meta.hf.space/`
 - live Space checks for `/`, `/reset`, `/step`, and `/state` succeed
+- the latest validator, latency, and baseline outputs are recorded in `RESULTS.md`
 
 ## Baseline scores
-Recorded baseline run in this workspace:
-- Provider path: OpenAI client against `https://api.groq.com/openai/v1`
-- Credential source: `GROQ_API_KEY`
-- Model: `llama3-8b-8192`
-- `billing_seat_adjustment`: `0.2750`
-- `login_incident_triage`: `0.2750`
-- `suspicious_admin_request`: `0.2500`
-- Overall mean: `0.2667`
+The latest captured live baseline and validator outputs are recorded in `RESULTS.md`.
 
-This recorded run used the local compatibility fallback rather than the hackathon-preferred HF router path.
-
-Recorded hackathon-path baseline run in this workspace:
+Most recent live `inference.py` run captured in the repo:
 - Provider path: OpenAI client against `https://router.huggingface.co/v1`
 - Credential source: `HF_TOKEN`
 - Model: `Qwen/Qwen2.5-7B-Instruct-1M`
 - Environment target: `https://i4mgr00t-meta.hf.space`
-- `billing_seat_adjustment`: `0.2750`
-- `login_incident_triage`: `0.2750`
-- `suspicious_admin_request`: `0.2500`
-- Overall mean: `0.2667`
+- Rounded task scores: `0.28`, `0.28`, `0.25`
+- Rounded mean: `0.27`
+
+Historical exact-score baseline runs are also documented in the project docs and remain consistent with the same underlying trajectory quality.
 
 Equivalent compatibility configuration for future runs:
 
@@ -303,12 +302,15 @@ python inference.py
 ```
 
 ## Final submission checklist
+- GitHub repo is available: `https://github.com/kumarabhik/AegisDesk`
 - Space URL is live: `https://i4mgr00t-meta.hf.space/`
 - `python verify_space.py --base-url https://i4mgr00t-meta.hf.space` succeeds
 - `verify-space --base-url https://i4mgr00t-meta.hf.space` succeeds
 - `submission-audit --space-url https://i4mgr00t-meta.hf.space` succeeds
+- the exact official pre-validation script passes
 - `python inference.py` succeeds with `HF_TOKEN`, `API_BASE_URL`, `MODEL_NAME`, and `ENV_BASE_URL` set
 - `python inference.py` emits `[START]`, `[STEP]`, and `[END]` log lines
 - `python -m pytest` passes
 - `openenv validate` passes
+- `RESULTS.md` captures the latest validator, verification, baseline, and latency outputs
 - the latest Hugging Face Space commit is the intended submission revision

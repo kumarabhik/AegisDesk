@@ -46,6 +46,8 @@ Current implementation and deployment status:
 - local tests pass with 33 tests
 - `openenv validate` passes
 - local Docker build/run has been verified
+- the exact official pre-validation script now passes locally
+- the public GitHub repo is live at `https://github.com/kumarabhik/AegisDesk`
 - the Hugging Face Space is live at `https://i4mgr00t-meta.hf.space/`
 - the live Space responds successfully to `/`, `/reset`, `/step`, and `/state`
 - the app now exposes `/tasks` and `/console` for task discovery and interactive manual evaluation
@@ -57,20 +59,14 @@ Current implementation and deployment status:
 - a professional submission narrative exists at `SUBMISSION_OVERVIEW.md`
 - a publish-ready article draft now exists at `HF_ARTICLE_DRAFT.md`
 - an optional TRL starter now exists in `training/`
+- a consolidated verification report now exists at `RESULTS.md`
 - `inference.py` now emits tagged `[START]`, `[STEP]`, and `[END]` stdout lines
-- a live HF-router baseline run against the deployed Space produces:
-  - `billing_seat_adjustment`: `0.2750`
-  - `login_incident_triage`: `0.2750`
-  - `suspicious_admin_request`: `0.2500`
-  - overall mean: `0.2667`
+- the latest captured live HF-router run reports rounded scores of `0.28`, `0.28`, and `0.25`, with a rounded mean of `0.27`
 
-Remaining non-code work is mainly submission/admin:
-- keep the Space URL available for the hackathon form
-- avoid rotating or leaking the active Hugging Face token unless necessary
-- make any final submissions against the latest pushed Space revision
-- run the official hackathon pre-validation script in addition to the local `submission_audit.py` helper
-- keep Docker Desktop running before using the local pre-validation mirror, because the script now fails fast when Docker is unreachable
-- confirm the new tagged log format matches the exact official sample expectations if the pre-validator is stricter than the local tests
+Current evidence pack:
+- `RESULTS.md` captures the exact official validator output, latest latency benchmark, and latest live inference output
+- `submission_audit.py` and `verify_space.py` both succeed against the live Space
+- the repo is now in a fully submission-ready state, with remaining work limited to optional publishing/admin tasks
 
 ## Goals
 - Implement the full OpenEnv interface with typed Pydantic models and validator-friendly packaging.

@@ -115,8 +115,8 @@ Exit criteria:
 Current status:
 - `inference.py` is implemented with OpenAI-env defaults plus Groq/xAI-compatible aliases.
 - README is implemented and now includes verified local validation status plus recorded baseline scores.
-- A real baseline run completed successfully in under 2 minutes with a mean score of `0.2667`.
-- A hackathon-path baseline run also completed successfully through the HF router with the same mean score of `0.2667`.
+- Historical exact-score baseline runs completed successfully in under 2 minutes with a mean score of `0.2667`.
+- `RESULTS.md` now captures the latest rerun outputs, including the current rounded live baseline summary.
 
 ## [x] Phase 7: Validation and deployment
 Deliverables:
@@ -142,7 +142,7 @@ Current status:
 - live container checks for `/`, `/reset`, `/step`, and `/state` succeed.
 - Hugging Face Space deployment is live and the public `.hf.space` root returns `200`.
 
-## [~] Phase 8: Hackathon submission compliance
+## [x] Phase 8: Hackathon submission compliance
 Deliverables:
 - Update `inference.py` so the preferred submission path uses `HF_TOKEN` with the Hugging Face router.
 - Update `README.md`, `design_doc.md`, and `roadmap.md` so the documented setup matches the hackathon guidance.
@@ -170,7 +170,7 @@ Current status:
 - Live checks for `/`, `/reset`, `/step`, and `/state` succeed.
 - `inference.py` now emits tagged `[START]`, `[STEP]`, and `[END]` log lines during live HF-router runs.
 - Local pre-validation mirrors now exist at `validate-submission.sh` and `validate-submission.ps1`.
-- Remaining submission risk: the official hackathon pre-validation script has still not been run locally, and the exact sample-script equivalence has not been confirmed against that official validator.
+- The exact official hackathon pre-validation script now passes locally against the live Space.
 
 ## [x] Phase 9: Final hardening and submission checks
 Deliverables:
@@ -221,7 +221,7 @@ Current status:
 - `SUBMISSION_OVERVIEW.md` provides a more polished and professional benchmark narrative.
 - `.env.example` documents the expected environment variables without storing secrets.
 
-## [~] Phase 12: Final evaluator compliance
+## [x] Phase 12: Final evaluator compliance
 Deliverables:
 - Update `inference.py` so stdout strictly follows the required `[START]`, `[STEP]`, and `[END]` format from the latest sample script.
 - Run the official hackathon pre-validation script rather than relying only on the local `submission_audit.py` helper.
@@ -236,7 +236,7 @@ Current status:
 - The environment itself is complete and deployable.
 - The evaluator-facing inference log format is now implemented and covered by tests.
 - A PowerShell-friendly local pre-validation script now fails correctly when Docker is unavailable instead of masking the error.
-- The official pre-validation script has not yet been run locally.
+- The official pre-validation script passes locally against `https://i4mgr00t-meta.hf.space`.
 
 ## [x] Phase 13: Optional publication and training extras
 Deliverables:
@@ -268,7 +268,23 @@ Exit criteria:
 Current status:
 - `server/app.py` now exposes `/console` and `/tasks`.
 - Startup prewarming now loads fixtures and creates the shared environment before the first interactive request.
+- `measure_latency.py` now captures before/after startup and first-hit timings for prewarming.
 - App smoke tests now cover the new routes and the repo passes with 33 tests.
+
+## [x] Phase 15: Results capture and doc sync
+Deliverables:
+- Capture the latest exact validator output in a checked-in report.
+- Record the latest verification, latency, and baseline results in one place.
+- Sync the markdown docs so they all point to the same current evidence.
+
+Exit criteria:
+- A single markdown file captures the latest measured results.
+- The root docs no longer refer to stale pending validator work.
+- Public repo and Space links are documented consistently.
+
+Current status:
+- `RESULTS.md` now captures the latest exact official validator pass, live verification output, live inference baseline, and latency benchmark.
+- The public GitHub repo and Hugging Face Space links are now surfaced consistently across the docs.
 
 ## Cross-cutting quality gates
 These checks apply throughout the project:

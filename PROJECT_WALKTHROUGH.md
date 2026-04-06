@@ -2,6 +2,12 @@
 
 `AegisDesk` is the public-facing name for `support_ops_env`, a real-world OpenEnv environment built around a workflow that people actually perform in modern software companies: support operations. Instead of asking an agent to play a game, sort abstract symbols, or solve an artificial benchmark, this project asks an agent to behave like a support operator working inside a SaaS company. The agent sees a small inbox, chooses which ticket deserves attention, opens the right internal records, makes safe operational decisions, drafts a structured reply, and closes or escalates the case. That makes the environment useful not only as a hackathon submission, but also as a more serious benchmark for evaluating whether an agent can navigate realistic business workflows without taking unsafe shortcuts.
 
+Useful links:
+- GitHub repo: `https://github.com/kumarabhik/AegisDesk`
+- Hugging Face Space: `https://huggingface.co/spaces/I4mGr00T/Meta`
+- Live app: `https://i4mgr00t-meta.hf.space`
+- Latest captured results: `RESULTS.md`
+
 The core idea is simple, but the design is intentionally disciplined. Every episode contains a small inbox with two or three tickets, one of which is the true target and the others acting as distractors. The agent is not rewarded just for finishing. It is rewarded for making progress in the right direction. That means the environment does not wait until the very last step to decide whether the model did well. Instead, it evaluates the path the agent takes. If the agent opens the correct ticket, inspects the right records, applies the right tags, avoids dangerous actions, and drafts an appropriate structured response, the score improves gradually. If the agent loops, performs irrelevant actions, or takes a policy-violating shortcut, the reward drops. This gives the benchmark the kind of dense feedback that reinforcement learning systems learn from more effectively than sparse pass-or-fail scoring.
 
 The project currently ships with three canonical tasks that form an intentional progression. The easy task, `billing_seat_adjustment`, checks whether the agent can resolve a routine but structured billing correction. The medium task, `login_incident_triage`, tests whether the agent can recognize that a user problem is actually part of a wider incident and avoid taking reckless remediation steps. The hard task, `suspicious_admin_request`, is designed to test security judgment, because the agent has to detect an unverified and potentially malicious request, inspect the right security context, and escalate rather than comply. In all three cases, the environment models a realistic support judgment problem rather than a toy objective.
@@ -53,7 +59,7 @@ ENV_BASE_URL=https://i4mgr00t-meta.hf.space
 python inference.py
 ```
 
-The project also supports fallback OpenAI-compatible providers for local experimentation, but the preferred benchmark path is the Hugging Face router because it aligns with the hackathon's expected setup. When you run `inference.py`, it evaluates all three canonical tasks in a fixed order and prints a reproducible score report. In the current verified runs, both the compatibility path and the hackathon router path produce the same mean score of `0.2667`, with task scores of `0.2750`, `0.2750`, and `0.2500`.
+The project also supports fallback OpenAI-compatible providers for local experimentation, but the preferred benchmark path is the Hugging Face router because it aligns with the hackathon's expected setup. When you run `inference.py`, it evaluates all three canonical tasks in a fixed order and prints a reproducible score report. The latest checked-in live run, captured in `RESULTS.md`, reports rounded task scores of `0.28`, `0.28`, and `0.25`, with a rounded mean of `0.27`.
 
 Verifying the deployed Hugging Face Space works almost exactly the same way as verifying locally. The project is live at `https://i4mgr00t-meta.hf.space/`, and the quickest operational check is:
 
@@ -68,6 +74,8 @@ python submission_audit.py --space-url https://i4mgr00t-meta.hf.space
 ```
 
 That gives you a realistic submission-readiness signal because it confirms not only that the Space is alive, but that the local project still passes tests and validator checks too. This is especially useful near submission time, because it reduces the chance that you rely on stale assumptions from an earlier run.
+
+The final confidence check is now even stronger than when this walkthrough was first written: the exact official hackathon pre-validation script has been run locally against the live Space and passes. The exact captured output, along with the latest latency benchmark and live baseline run, is recorded in `RESULTS.md`.
 
 The most important thing to understand about what this project does is that it is not simply a FastAPI app with some JSON endpoints. It is a deliberately structured evaluation environment for agent behavior. The reason the small inbox design works well is that it introduces ambiguity without becoming chaotic. The agent must decide which ticket matters, which records matter, which actions are safe, and whether the correct response is resolution, waiting, or escalation. That creates a richer training and evaluation surface than a single linear task, while still being deterministic enough to validate automatically and cheaply.
 

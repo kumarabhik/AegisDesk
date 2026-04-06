@@ -14,4 +14,9 @@ The environment also makes a deliberate choice not to rely on model-graded free 
 
 Operationally, the project is mature. It includes a typed OpenEnv-compatible environment, a live Hugging Face Space deployment, a working Docker path, a baseline inference runner, a local and remote verification helper, and a higher-level submission audit tool. The project is not just code that "ought" to work. It has already been exercised locally and against the deployed Space. The Hugging Face router path using `HF_TOKEN` has been verified, the live Space endpoints return healthy results, and the baseline path has been run end to end. That means the repository is not merely descriptive; it is backed by a tested operational workflow.
 
+That operational maturity is now backed by a checked-in evidence trail as well. The exact official pre-validation script passes locally against the live Space, and the latest validator output, verification output, latency benchmark, and baseline run are captured in `RESULTS.md`. The public delivery endpoints are:
+- GitHub: `https://github.com/kumarabhik/AegisDesk`
+- Hugging Face Space: `https://huggingface.co/spaces/I4mGr00T/Meta`
+- Live app: `https://i4mgr00t-meta.hf.space`
+
 From a submission point of view, the strongest story this project tells is that it evaluates the kind of judgment that real operators and real agent products need. It does not reduce the problem to classification or syntax. The agent must prioritize, investigate, mutate state carefully, escalate when necessary, and communicate cleanly. Those are exactly the capabilities that become important when agents move from isolated demos into production-facing business workflows. That is why `support_ops_env` is not only a valid hackathon environment, but also a useful benchmark direction in its own right.
