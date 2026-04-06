@@ -140,6 +140,7 @@ run-local-stack
 
 ## Baseline inference
 The root `inference.py` script uses the OpenAI client.
+It now emits structured stdout lines tagged as `[START]`, `[STEP]`, and `[END]` for evaluator-friendly parsing.
 
 Hackathon-preferred configuration:
 - `HF_TOKEN`
@@ -200,7 +201,7 @@ submission-audit --space-url https://i4mgr00t-meta.hf.space
 
 ## Verification status
 Verified in this workspace:
-- `python -m pytest` passes with 21 tests
+- `python -m pytest` passes with 31 tests
 - `openenv validate` passes
 - FastAPI smoke checks for `/` and `/reset` pass
 - FastAPI health checks for `/` and `/health` pass
@@ -208,6 +209,7 @@ Verified in this workspace:
 - `env-doctor` provides a non-secret environment readiness check
 - `uv.lock` has been generated
 - `inference.py` resolves `HF_TOKEN` plus the Hugging Face router as the preferred submission path
+- `inference.py` emits tagged `[START]`, `[STEP]`, and `[END]` stdout lines
 - `inference.py` still supports standard OpenAI env vars and compatible Groq/xAI aliases as fallbacks
 - `inference.py` has been run successfully against a Groq-compatible backend
 - `inference.py` has been run successfully against the Hugging Face router using `HF_TOKEN`
@@ -265,6 +267,7 @@ python inference.py
 - `verify-space --base-url https://i4mgr00t-meta.hf.space` succeeds
 - `submission-audit --space-url https://i4mgr00t-meta.hf.space` succeeds
 - `python inference.py` succeeds with `HF_TOKEN`, `API_BASE_URL`, `MODEL_NAME`, and `ENV_BASE_URL` set
+- `python inference.py` emits `[START]`, `[STEP]`, and `[END]` log lines
 - `python -m pytest` passes
 - `openenv validate` passes
 - the latest Hugging Face Space commit is the intended submission revision

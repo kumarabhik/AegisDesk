@@ -208,18 +208,121 @@ def make_environment():
     return LocalSupportOpsEnv()
 
 
-def run_task(task_id: str, task_seed: int) -> float:
+def _json_line(tag: str, payload: dict[str, Any]) -> str:
+    """Return a stable tagged JSON log line."""
+
+    return f"[{tag}] {json.dumps(payload, separators=(',', ':'), ensure_ascii=True)}"
+
+
+def emit_start_log(
+    *,
+    task_id: str,
+    seed: int,
+    model_name: str,
+    api_base_url: str | None,
+    env_base_url: str,
+    max_steps: int,
+) -> None:
+    """Print a structured task-start log line."""
+
+    print(
+        _json_line(
+            "START",
+            {
+                "task_id": task_id,
+                "seed": seed,
+                "model_name": model_name,
+                "api_base_url": api_base_url or "",
+                "env_base_url": env_base_url,
+                "max_steps": max_steps,
+            },
+        )
+    )
+
+
+def emit_step_log(
+    *,
+    task_id: str,
+    seed: int,
+    step: int,
+    action: SupportAction,
+    reward: float | None,
+    done: bool,
+    last_action_error: str | None,
+    fallback_used: bool,
+) -> None:
+    """Print a structured per-step log line."""
+
+    print(
+        _json_line(
+            "STEP",
+            {
+                "task_id": task_id,
+                "seed": seed,
+                "step": step,
+                "action_type": action.action_type.value,
+                "action": action.model_dump(
+                    mode="json",
+                    exclude_none=True,
+                    exclude_defaults=True,
+                ),
+                "reward": reward if reward is not None else 0.0,
+                "done": done,
+                "last_action_error": last_action_error or "",
+                "fallback_used": fallback_used,
+            },
+        )
+    )
+
+
+def emit_end_log(
+    *,
+    task_id: str,
+    seed: int,
+    final_score: float,
+    steps_taken: int,
+    completed: bool,
+) -> None:
+    """Print a structured task-end log line."""
+
+    print(
+        _json_line(
+            "END",
+            {
+                "task_id": task_id,
+                "seed": seed,
+                "final_score": round(final_score, 4),
+                "steps_taken": steps_taken,
+                "completed": completed,
+            },
+        )
+    )
+
+
+def run_task(task_id: str, task_seed: int, config: InferenceConfig) -> float:
     """Run one task and return its final score."""
 
-    client, model_name = make_openai_client()
     env = make_environment()
+    client, model_name = make_openai_client()
     history: list[str] = []
+    env_base_url = os.getenv("ENV_BASE_URL", "local_in_process")
+    emit_start_log(
+        task_id=task_id,
+        seed=task_seed,
+        model_name=model_name,
+        api_base_url=config.api_base_url,
+        env_base_url=env_base_url,
+        max_steps=MAX_STEPS,
+    )
     try:
         result = env.reset(task_id=task_id, seed=task_seed)
         observation = result.observation
         final_score = 0.0
+        completed = False
+        steps_taken = 0
         for step_index in range(1, MAX_STEPS + 1):
             prompt = build_user_prompt(step_index, observation, history)
+            fallback_used = False
             try:
                 completion = client.chat.completions.create(
                     model=model_name,
@@ -234,21 +337,41 @@ def run_task(task_id: str, task_seed: int) -> float:
                 action = parse_model_action(response_text)
             except Exception:
                 action = fallback_action(observation)
+                fallback_used = True
 
             result = env.step(action)
             observation = result.observation
+            steps_taken = step_index
             history.append(
                 f"step={step_index} action={action.action_type.value} "
                 f"reward={result.reward} error={observation.last_action_error}"
             )
+            emit_step_log(
+                task_id=task_id,
+                seed=task_seed,
+                step=step_index,
+                action=action,
+                reward=result.reward,
+                done=result.done,
+                last_action_error=observation.last_action_error,
+                fallback_used=fallback_used,
+            )
             if result.done:
                 state = env.state()
                 final_score = float(state.final_score or 0.0)
+                completed = True
                 break
         else:
             state = env.state()
             final_score = float(state.final_score or state.rubric_progress or 0.0)
-        print(f"{task_id}: {final_score:.4f}")
+
+        emit_end_log(
+            task_id=task_id,
+            seed=task_seed,
+            final_score=final_score,
+            steps_taken=steps_taken,
+            completed=completed,
+        )
         return final_score
     finally:
         env.close()
@@ -258,26 +381,25 @@ def main() -> None:
     """Run all canonical tasks and print a reproducible summary."""
 
     config = resolve_inference_config()
-    print(
-        json.dumps(
-            {
-                "api_base_url": config.api_base_url,
-                "credential_source": config.credential_source,
-                "model_name": config.model_name,
-            },
-            indent=2,
-            sort_keys=True,
-        )
-    )
     scores: dict[str, float] = {}
     for index, task_id in enumerate(TASK_IDS, start=1):
-        scores[task_id] = run_task(task_id, task_seed=index)
-    mean_score = sum(scores.values()) / len(scores)
-    payload: dict[str, Any] = {
-        "scores": scores,
-        "mean_score": round(mean_score, 4),
-    }
-    print(json.dumps(payload, indent=2, sort_keys=True))
+        scores[task_id] = run_task(task_id, task_seed=index, config=config)
+
+    mean_score = round(sum(scores.values()) / len(scores), 4)
+    print(
+        _json_line(
+            "END",
+            {
+                "run_summary": True,
+                "task_count": len(TASK_IDS),
+                "mean_score": mean_score,
+                "scores": scores,
+                "model_name": config.model_name,
+                "api_base_url": config.api_base_url or "",
+                "credential_source": config.credential_source,
+            },
+        )
+    )
 
 
 if __name__ == "__main__":

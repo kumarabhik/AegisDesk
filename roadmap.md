@@ -135,14 +135,14 @@ Exit criteria:
 - The project is ready to push to a Hugging Face Space tagged `openenv`.
 
 Current status:
-- `python -m pytest` passes locally with 21 tests.
+- `python -m pytest` passes locally with 31 tests.
 - `openenv validate` passes locally.
 - `docker build` succeeds locally.
 - `docker run` succeeds locally.
 - live container checks for `/`, `/reset`, `/step`, and `/state` succeed.
 - Hugging Face Space deployment is live and the public `.hf.space` root returns `200`.
 
-## [x] Phase 8: Hackathon submission compliance
+## [~] Phase 8: Hackathon submission compliance
 Deliverables:
 - Update `inference.py` so the preferred submission path uses `HF_TOKEN` with the Hugging Face router.
 - Update `README.md`, `design_doc.md`, and `roadmap.md` so the documented setup matches the hackathon guidance.
@@ -164,10 +164,12 @@ Exit criteria:
 Current status:
 - Core environment implementation is complete and locally verified.
 - `inference.py` now prefers `HF_TOKEN` plus `https://router.huggingface.co/v1` and this path is covered by tests.
-- `python -m pytest` passes locally with 21 tests after the final hardening updates.
+- `python -m pytest` now passes locally with 31 tests after the inference-log updates.
 - HF CLI authentication is configured locally and the Space variables/secrets were set through the HF API.
 - The Hugging Face Space remote now points to the project commit and the live `.hf.space` URL returns `200`.
 - Live checks for `/`, `/reset`, `/step`, and `/state` succeed.
+- `inference.py` now emits tagged `[START]`, `[STEP]`, and `[END]` log lines during live HF-router runs.
+- Remaining submission risk: the official hackathon pre-validation script has still not been run locally, and the exact sample-script equivalence has not been confirmed against that official validator.
 
 ## [x] Phase 9: Final hardening and submission checks
 Deliverables:
@@ -200,7 +202,7 @@ Exit criteria:
 Current status:
 - `submission_audit.py` provides a compact JSON readiness report for local and live checks.
 - `tests/test_submission_audit.py` covers the audit helper logic.
-- The project now has 21 passing tests and a reusable final verification workflow.
+- The project now has 31 passing tests and a reusable final verification workflow.
 
 ## [x] Phase 11: Narrative and operator documentation
 Deliverables:
@@ -217,6 +219,22 @@ Current status:
 - `PROJECT_WALKTHROUGH.md` explains the project, architecture, run flow, and verification flow in a blog-style format.
 - `SUBMISSION_OVERVIEW.md` provides a more polished and professional benchmark narrative.
 - `.env.example` documents the expected environment variables without storing secrets.
+
+## [~] Phase 12: Final evaluator compliance
+Deliverables:
+- Update `inference.py` so stdout strictly follows the required `[START]`, `[STEP]`, and `[END]` format from the latest sample script.
+- Run the official hackathon pre-validation script rather than relying only on the local `submission_audit.py` helper.
+- Sync the final docs after the inference-format update so reported test counts and submission instructions stay accurate.
+
+Exit criteria:
+- `inference.py` emits the exact required structured log format.
+- The official pre-validation script passes in this workspace.
+- The final docs no longer overstate submission readiness.
+
+Current status:
+- The environment itself is complete and deployable.
+- The evaluator-facing inference log format is now implemented and covered by tests.
+- The official pre-validation script has not yet been run locally.
 
 ## Cross-cutting quality gates
 These checks apply throughout the project:
