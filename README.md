@@ -199,6 +199,18 @@ verify-space --base-url https://i4mgr00t-meta.hf.space
 submission-audit --space-url https://i4mgr00t-meta.hf.space
 ```
 
+If you want a local mirror of the hackathon pre-validation flow, use one of these:
+
+```bash
+./validate-submission.sh https://i4mgr00t-meta.hf.space
+```
+
+On Windows, prefer the PowerShell version:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\validate-submission.ps1 -PingUrl https://i4mgr00t-meta.hf.space -RepoDir .
+```
+
 ## Verification status
 Verified in this workspace:
 - `python -m pytest` passes with 31 tests
@@ -217,6 +229,7 @@ Verified in this workspace:
 - `docker run -p 7860:7860 support-ops-env` succeeds
 - live container checks for `/`, `/reset`, `/step`, and `/state` succeed
 - `submission-audit --space-url https://i4mgr00t-meta.hf.space` succeeds
+- local mirror validator scripts exist at `validate-submission.sh` and `validate-submission.ps1`
 - Hugging Face Space deployment is live and verified at `https://i4mgr00t-meta.hf.space/`
 - live Space checks for `/`, `/reset`, `/step`, and `/state` succeed
 

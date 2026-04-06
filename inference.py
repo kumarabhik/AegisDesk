@@ -31,6 +31,8 @@ Use the visible inbox, focus panel, and available record ids.
 Do not wrap JSON in markdown.
 """.strip()
 HF_ROUTER_BASE_URL = "https://router.huggingface.co/v1"
+BENCHMARK = os.getenv("BENCHMARK", "support_ops_env")
+SUCCESS_SCORE_THRESHOLD = float(os.getenv("SUCCESS_SCORE_THRESHOLD", "0.1"))
 
 
 @dataclass(frozen=True)
@@ -208,94 +210,87 @@ def make_environment():
     return LocalSupportOpsEnv()
 
 
-def _json_line(tag: str, payload: dict[str, Any]) -> str:
-    """Return a stable tagged JSON log line."""
+def format_bool(value: bool) -> str:
+    """Render a bool in the exact lowercase format the validator expects."""
 
-    return f"[{tag}] {json.dumps(payload, separators=(',', ':'), ensure_ascii=True)}"
+    return "true" if value else "false"
 
 
-def emit_start_log(
-    *,
-    task_id: str,
-    seed: int,
-    model_name: str,
-    api_base_url: str | None,
-    env_base_url: str,
-    max_steps: int,
-) -> None:
-    """Print a structured task-start log line."""
+def format_reward(value: float | None) -> str:
+    """Render rewards and scores with exactly two decimals."""
 
-    print(
-        _json_line(
-            "START",
-            {
-                "task_id": task_id,
-                "seed": seed,
-                "model_name": model_name,
-                "api_base_url": api_base_url or "",
-                "env_base_url": env_base_url,
-                "max_steps": max_steps,
-            },
-        )
+    return f"{float(value or 0.0):.2f}"
+
+
+def format_rewards(values: list[float]) -> str:
+    """Render a comma-separated reward list using fixed 2-decimal formatting."""
+
+    return ",".join(format_reward(value) for value in values)
+
+
+def format_error(error: str | None) -> str:
+    """Render raw action errors or null when absent."""
+
+    if not error:
+        return "null"
+    return error.replace("\n", " ").replace("\r", " ")
+
+
+def format_action_str(action: SupportAction) -> str:
+    """Render a compact, space-free action string for stdout logging."""
+
+    return json.dumps(
+        action.model_dump(
+            mode="json",
+            exclude_none=True,
+            exclude_defaults=True,
+        ),
+        separators=(",", ":"),
+        ensure_ascii=True,
     )
+
+
+def emit_start_log(*, task_id: str, benchmark: str, model_name: str) -> None:
+    """Print the exact required episode-start log line."""
+
+    print(f"[START] task={task_id} env={benchmark} model={model_name}")
 
 
 def emit_step_log(
     *,
-    task_id: str,
-    seed: int,
     step: int,
-    action: SupportAction,
+    action_str: str,
     reward: float | None,
     done: bool,
-    last_action_error: str | None,
-    fallback_used: bool,
+    error: str | None,
 ) -> None:
-    """Print a structured per-step log line."""
+    """Print the exact required per-step log line."""
 
     print(
-        _json_line(
-            "STEP",
-            {
-                "task_id": task_id,
-                "seed": seed,
-                "step": step,
-                "action_type": action.action_type.value,
-                "action": action.model_dump(
-                    mode="json",
-                    exclude_none=True,
-                    exclude_defaults=True,
-                ),
-                "reward": reward if reward is not None else 0.0,
-                "done": done,
-                "last_action_error": last_action_error or "",
-                "fallback_used": fallback_used,
-            },
-        )
+        "[STEP] "
+        f"step={step} "
+        f"action={action_str} "
+        f"reward={format_reward(reward)} "
+        f"done={format_bool(done)} "
+        f"error={format_error(error)}"
     )
 
 
 def emit_end_log(
     *,
-    task_id: str,
-    seed: int,
-    final_score: float,
-    steps_taken: int,
-    completed: bool,
+    success: bool,
+    steps: int,
+    score: float,
+    rewards: list[float],
 ) -> None:
-    """Print a structured task-end log line."""
+    """Print the exact required episode-end log line."""
 
     print(
-        _json_line(
-            "END",
-            {
-                "task_id": task_id,
-                "seed": seed,
-                "final_score": round(final_score, 4),
-                "steps_taken": steps_taken,
-                "completed": completed,
-            },
-        )
+        "[END] "
+        f"success={format_bool(success)} "
+        f"steps={steps} "
+        f"score={format_reward(score)} "
+        f"rewards={format_rewards(rewards)}"
     )
 
 
@@ -305,24 +300,18 @@ def run_task(task_id: str, task_seed: int, config: InferenceConfig) -> float:
     env = make_environment()
     client, model_name = make_openai_client()
     history: list[str] = []
-    env_base_url = os.getenv("ENV_BASE_URL", "local_in_process")
-    emit_start_log(
-        task_id=task_id,
-        seed=task_seed,
-        model_name=model_name,
-        api_base_url=config.api_base_url,
-        env_base_url=env_base_url,
-        max_steps=MAX_STEPS,
-    )
+    rewards: list[float] = []
+    final_score = 0.0
+    steps_taken = 0
+    success = False
+
+    emit_start_log(task_id=task_id, benchmark=BENCHMARK, model_name=model_name)
     try:
         result = env.reset(task_id=task_id, seed=task_seed)
         observation = result.observation
-        final_score = 0.0
-        completed = False
-        steps_taken = 0
+
         for step_index in range(1, MAX_STEPS + 1):
             prompt = build_user_prompt(step_index, observation, history)
-            fallback_used = False
             try:
                 completion = client.chat.completions.create(
                     model=model_name,
@@ -337,69 +326,52 @@ def run_task(task_id: str, task_seed: int, config: InferenceConfig) -> float:
                 action = parse_model_action(response_text)
             except Exception:
                 action = fallback_action(observation)
-                fallback_used = True
 
             result = env.step(action)
             observation = result.observation
+            reward_value = float(result.reward or 0.0)
+            rewards.append(reward_value)
             steps_taken = step_index
             history.append(
                 f"step={step_index} action={action.action_type.value} "
-                f"reward={result.reward} error={observation.last_action_error}"
+                f"reward={reward_value} error={observation.last_action_error}"
             )
             emit_step_log(
-                task_id=task_id,
-                seed=task_seed,
                 step=step_index,
-                action=action,
-                reward=result.reward,
+                action_str=format_action_str(action),
+                reward=reward_value,
                 done=result.done,
-                last_action_error=observation.last_action_error,
-                fallback_used=fallback_used,
+                error=observation.last_action_error,
             )
             if result.done:
                 state = env.state()
                 final_score = float(state.final_score or 0.0)
-                completed = True
-                break
-        else:
-            state = env.state()
-            final_score = float(state.final_score or state.rubric_progress or 0.0)
+                success = final_score >= SUCCESS_SCORE_THRESHOLD
+                return final_score
 
-        emit_end_log(
-            task_id=task_id,
-            seed=task_seed,
-            final_score=final_score,
-            steps_taken=steps_taken,
-            completed=completed,
-        )
+        state = env.state()
+        final_score = float(state.final_score or state.rubric_progress or 0.0)
+        success = final_score >= SUCCESS_SCORE_THRESHOLD
+        return final_score
+    except Exception:
+        success = False
         return final_score
     finally:
         env.close()
+        emit_end_log(
+            success=success,
+            steps=steps_taken,
+            score=final_score,
+            rewards=rewards,
+        )
 
 
 def main() -> None:
-    """Run all canonical tasks and print a reproducible summary."""
+    """Run all canonical tasks and print validator-friendly stdout lines."""
 
     config = resolve_inference_config()
-    scores: dict[str, float] = {}
     for index, task_id in enumerate(TASK_IDS, start=1):
-        scores[task_id] = run_task(task_id, task_seed=index, config=config)
-
-    mean_score = round(sum(scores.values()) / len(scores), 4)
-    print(
-        _json_line(
-            "END",
-            {
-                "run_summary": True,
-                "task_count": len(TASK_IDS),
-                "mean_score": mean_score,
-                "scores": scores,
-                "model_name": config.model_name,
-                "api_base_url": config.api_base_url or "",
-                "credential_source": config.credential_source,
-            },
-        )
-    )
+        run_task(task_id, task_seed=index, config=config)
 
 
 if __name__ == "__main__":

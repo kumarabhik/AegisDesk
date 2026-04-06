@@ -49,6 +49,7 @@ Current implementation and deployment status:
 - the live Space responds successfully to `/`, `/reset`, `/step`, and `/state`
 - the hackathon submission path uses `HF_TOKEN` with `https://router.huggingface.co/v1`
 - reusable verification helpers exist at `verify_space.py` and `submission_audit.py`
+- local pre-validation mirrors now exist at `validate-submission.sh` and `validate-submission.ps1`
 - local operator helpers now exist at `run_local_stack.py` and `env_doctor.py`
 - a professional submission narrative exists at `SUBMISSION_OVERVIEW.md`
 - `inference.py` now emits tagged `[START]`, `[STEP]`, and `[END]` stdout lines
@@ -63,6 +64,7 @@ Remaining non-code work is mainly submission/admin:
 - avoid rotating or leaking the active Hugging Face token unless necessary
 - make any final submissions against the latest pushed Space revision
 - run the official hackathon pre-validation script in addition to the local `submission_audit.py` helper
+- keep Docker Desktop running before using the local pre-validation mirror, because the script now fails fast when Docker is unreachable
 - confirm the new tagged log format matches the exact official sample expectations if the pre-validator is stricter than the local tests
 
 ## Goals

@@ -169,6 +169,7 @@ Current status:
 - The Hugging Face Space remote now points to the project commit and the live `.hf.space` URL returns `200`.
 - Live checks for `/`, `/reset`, `/step`, and `/state` succeed.
 - `inference.py` now emits tagged `[START]`, `[STEP]`, and `[END]` log lines during live HF-router runs.
+- Local pre-validation mirrors now exist at `validate-submission.sh` and `validate-submission.ps1`.
 - Remaining submission risk: the official hackathon pre-validation script has still not been run locally, and the exact sample-script equivalence has not been confirmed against that official validator.
 
 ## [x] Phase 9: Final hardening and submission checks
@@ -234,6 +235,7 @@ Exit criteria:
 Current status:
 - The environment itself is complete and deployable.
 - The evaluator-facing inference log format is now implemented and covered by tests.
+- A PowerShell-friendly local pre-validation script now fails correctly when Docker is unavailable instead of masking the error.
 - The official pre-validation script has not yet been run locally.
 
 ## Cross-cutting quality gates
