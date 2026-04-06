@@ -26,3 +26,21 @@ def test_reset_endpoint_returns_step_payload_shape() -> None:
     assert response.status_code == 200
     assert sorted(payload.keys()) == ["done", "info", "observation", "reward"]
     assert payload["observation"]["task_brief"]
+
+
+def test_tasks_endpoint_returns_catalog() -> None:
+    client = TestClient(app)
+    response = client.get("/tasks")
+    payload = response.json()
+    assert response.status_code == 200
+    assert "tasks" in payload
+    assert len(payload["tasks"]) >= 3
+    assert any(task["task_id"] == "billing_seat_adjustment" for task in payload["tasks"])
+
+
+def test_console_endpoint_returns_html() -> None:
+    client = TestClient(app)
+    response = client.get("/console")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "AegisDesk Console" in response.text

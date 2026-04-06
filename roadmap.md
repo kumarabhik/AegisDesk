@@ -135,7 +135,7 @@ Exit criteria:
 - The project is ready to push to a Hugging Face Space tagged `openenv`.
 
 Current status:
-- `python -m pytest` passes locally with 31 tests.
+- `python -m pytest` passes locally with 33 tests.
 - `openenv validate` passes locally.
 - `docker build` succeeds locally.
 - `docker run` succeeds locally.
@@ -164,7 +164,7 @@ Exit criteria:
 Current status:
 - Core environment implementation is complete and locally verified.
 - `inference.py` now prefers `HF_TOKEN` plus `https://router.huggingface.co/v1` and this path is covered by tests.
-- `python -m pytest` now passes locally with 31 tests after the inference-log updates.
+- `python -m pytest` now passes locally with 33 tests after the latest app and tooling updates.
 - HF CLI authentication is configured locally and the Space variables/secrets were set through the HF API.
 - The Hugging Face Space remote now points to the project commit and the live `.hf.space` URL returns `200`.
 - Live checks for `/`, `/reset`, `/step`, and `/state` succeed.
@@ -203,7 +203,7 @@ Exit criteria:
 Current status:
 - `submission_audit.py` provides a compact JSON readiness report for local and live checks.
 - `tests/test_submission_audit.py` covers the audit helper logic.
-- The project now has 31 passing tests and a reusable final verification workflow.
+- The project now has 33 passing tests and a reusable final verification workflow.
 
 ## [x] Phase 11: Narrative and operator documentation
 Deliverables:
@@ -253,6 +253,22 @@ Current status:
 - `HF_ARTICLE_DRAFT.md` now exists as a publish-ready article draft.
 - `training/README.md` and `training/train_grpo_aegisdesk.py` now exist as post-submission training extras.
 - The environment id, Space URL, validator path, and baseline submission flow remain unchanged.
+
+## [x] Phase 14: Interactive console and latency polish
+Deliverables:
+- Add a browser-based console for manual task exploration without changing the judged endpoints.
+- Add a task catalog endpoint to support UI discovery and external tooling.
+- Reduce first-hit latency by prewarming the fixture cache and shared environment on startup.
+
+Exit criteria:
+- A manual user can explore the benchmark from the browser.
+- The server exposes a lightweight task discovery endpoint.
+- The first-request penalty is reduced through eager startup warming.
+
+Current status:
+- `server/app.py` now exposes `/console` and `/tasks`.
+- Startup prewarming now loads fixtures and creates the shared environment before the first interactive request.
+- App smoke tests now cover the new routes and the repo passes with 33 tests.
 
 ## Cross-cutting quality gates
 These checks apply throughout the project:

@@ -43,15 +43,17 @@ Use this section to quickly restore project context if a future coding session l
 ## Status Snapshot
 Current implementation and deployment status:
 
-- local tests pass with 31 tests
+- local tests pass with 33 tests
 - `openenv validate` passes
 - local Docker build/run has been verified
 - the Hugging Face Space is live at `https://i4mgr00t-meta.hf.space/`
 - the live Space responds successfully to `/`, `/reset`, `/step`, and `/state`
+- the app now exposes `/tasks` and `/console` for task discovery and interactive manual evaluation
 - the hackathon submission path uses `HF_TOKEN` with `https://router.huggingface.co/v1`
 - reusable verification helpers exist at `verify_space.py` and `submission_audit.py`
 - local pre-validation mirrors now exist at `validate-submission.sh` and `validate-submission.ps1`
 - local operator helpers now exist at `run_local_stack.py` and `env_doctor.py`
+- startup prewarming now reduces first-request latency by loading fixtures and the shared environment eagerly
 - a professional submission narrative exists at `SUBMISSION_OVERVIEW.md`
 - a publish-ready article draft now exists at `HF_ARTICLE_DRAFT.md`
 - an optional TRL starter now exists in `training/`

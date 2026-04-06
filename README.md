@@ -143,6 +143,18 @@ python run_local_stack.py
 run-local-stack
 ```
 
+If you want to explore the benchmark manually in the browser, open:
+
+```text
+http://127.0.0.1:7860/console
+```
+
+The interactive console uses the existing API and adds:
+- a task catalog loaded from `/tasks`
+- a structured action form
+- live observation and state panels
+- ticket and record shortcuts for faster manual exploration
+
 ## Baseline inference
 The root `inference.py` script uses the OpenAI client.
 It now emits structured stdout lines tagged as `[START]`, `[STEP]`, and `[END]` for evaluator-friendly parsing.
@@ -218,13 +230,15 @@ powershell -ExecutionPolicy Bypass -File .\validate-submission.ps1 -PingUrl http
 
 ## Verification status
 Verified in this workspace:
-- `python -m pytest` passes with 31 tests
+- `python -m pytest` passes with 33 tests
 - `openenv validate` passes
 - FastAPI smoke checks for `/` and `/reset` pass
 - FastAPI health checks for `/` and `/health` pass
+- FastAPI console checks for `/console` and task-catalog checks for `/tasks` pass
 - `run-local-stack` provides a one-command local start plus verification path
 - `env-doctor` provides a non-secret environment readiness check
 - `uv.lock` has been generated
+- the app now prewarms fixture and environment caches on startup to reduce first-hit latency
 - `inference.py` resolves `HF_TOKEN` plus the Hugging Face router as the preferred submission path
 - `inference.py` emits tagged `[START]`, `[STEP]`, and `[END]` stdout lines
 - `inference.py` still supports standard OpenAI env vars and compatible Groq/xAI aliases as fallbacks
