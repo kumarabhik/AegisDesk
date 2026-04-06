@@ -8,6 +8,7 @@ import pytest
 
 from inference import (
     BENCHMARK,
+    DEFAULT_MODEL_NAME,
     HF_ROUTER_BASE_URL,
     SupportAction,
     emit_end_log,
@@ -54,6 +55,24 @@ def test_resolve_inference_config_prefers_hf_router_submission_env(
 
     assert config.api_key == "hf-token"
     assert config.model_name == "deepseek-ai/DeepSeek-R1:fastest"
+    assert config.api_base_url == HF_ROUTER_BASE_URL
+    assert config.credential_source == "HF_TOKEN"
+
+
+def test_resolve_inference_config_defaults_model_name_for_hf_router(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HF_TOKEN", "hf-token")
+    monkeypatch.delenv("MODEL_NAME", raising=False)
+    monkeypatch.delenv("GROQ_MODEL", raising=False)
+    monkeypatch.delenv("XAI_MODEL", raising=False)
+    monkeypatch.delenv("GROK_MODEL", raising=False)
+    monkeypatch.delenv("API_BASE_URL", raising=False)
+
+    config = resolve_inference_config()
+
+    assert config.api_key == "hf-token"
+    assert config.model_name == DEFAULT_MODEL_NAME
     assert config.api_base_url == HF_ROUTER_BASE_URL
     assert config.credential_source == "HF_TOKEN"
 

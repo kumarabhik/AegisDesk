@@ -31,6 +31,7 @@ Use the visible inbox, focus panel, and available record ids.
 Do not wrap JSON in markdown.
 """.strip()
 HF_ROUTER_BASE_URL = "https://router.huggingface.co/v1"
+DEFAULT_MODEL_NAME = "Qwen/Qwen2.5-7B-Instruct-1M"
 BENCHMARK = os.getenv("BENCHMARK", "support_ops_env")
 SUCCESS_SCORE_THRESHOLD = float(os.getenv("SUCCESS_SCORE_THRESHOLD", "0.1"))
 
@@ -77,6 +78,8 @@ def resolve_inference_config() -> InferenceConfig:
         "XAI_MODEL",
         "GROK_MODEL",
     )
+    if not model_name:
+        model_name = DEFAULT_MODEL_NAME
     if api_key_name == "HF_TOKEN":
         api_base_url = os.getenv("API_BASE_URL", "").strip() or HF_ROUTER_BASE_URL
     else:
@@ -93,13 +96,6 @@ def resolve_inference_config() -> InferenceConfig:
             "For compatible local providers, GROQ_API_KEY, XAI_API_KEY, or "
             "GROK_API_KEY may also be used."
         )
-    if not model_name:
-        raise RuntimeError(
-            "MODEL_NAME is required to run inference.py. "
-            "For OpenAI-compatible providers, GROQ_MODEL, XAI_MODEL, or "
-            "GROK_MODEL may also be used."
-        )
-
     credential_source = api_key_name or "HF_TOKEN"
     return InferenceConfig(
         api_key=api_key,
