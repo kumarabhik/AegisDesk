@@ -155,6 +155,14 @@ The interactive console uses the existing API and adds:
 - live observation and state panels
 - ticket and record shortcuts for faster manual exploration
 
+If you want to measure the latency impact of startup prewarming, run:
+
+```bash
+python measure_latency.py --runs 3
+```
+
+This compares local startup and first-hit timings with prewarming enabled versus disabled.
+
 ## Baseline inference
 The root `inference.py` script uses the OpenAI client.
 It now emits structured stdout lines tagged as `[START]`, `[STEP]`, and `[END]` for evaluator-friendly parsing.
@@ -237,6 +245,7 @@ Verified in this workspace:
 - FastAPI console checks for `/console` and task-catalog checks for `/tasks` pass
 - `run-local-stack` provides a one-command local start plus verification path
 - `env-doctor` provides a non-secret environment readiness check
+- `measure_latency.py` quantifies the local startup prewarm impact
 - `uv.lock` has been generated
 - the app now prewarms fixture and environment caches on startup to reduce first-hit latency
 - `inference.py` resolves `HF_TOKEN` plus the Hugging Face router as the preferred submission path

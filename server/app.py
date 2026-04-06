@@ -726,11 +726,19 @@ def _prewarm_runtime() -> None:
     create_environment()
 
 
+def _prewarm_enabled() -> bool:
+    """Return whether startup prewarming is enabled for this process."""
+
+    value = os.getenv("AEGISDESK_PREWARM", "1").strip().lower()
+    return value not in {"0", "false", "no", "off"}
+
+
 @asynccontextmanager
 async def app_lifespan(_: FastAPI):
     """Warm caches before serving requests so the first interactive hit is faster."""
 
-    _prewarm_runtime()
+    if _prewarm_enabled():
+        _prewarm_runtime()
     yield
 
 
