@@ -53,6 +53,8 @@ Current implementation and deployment status:
 - local pre-validation mirrors now exist at `validate-submission.sh` and `validate-submission.ps1`
 - local operator helpers now exist at `run_local_stack.py` and `env_doctor.py`
 - a professional submission narrative exists at `SUBMISSION_OVERVIEW.md`
+- a publish-ready article draft now exists at `HF_ARTICLE_DRAFT.md`
+- an optional TRL starter now exists in `training/`
 - `inference.py` now emits tagged `[START]`, `[STEP]`, and `[END]` stdout lines
 - a live HF-router baseline run against the deployed Space produces:
   - `billing_seat_adjustment`: `0.2750`

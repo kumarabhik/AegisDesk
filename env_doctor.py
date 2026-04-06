@@ -16,7 +16,7 @@ DEFAULT_ENV_BASE_URL = "http://127.0.0.1:7860"
 def inspect_environment(env: dict[str, str] | None = None) -> dict[str, Any]:
     """Return a compact, non-secret summary of local configuration readiness."""
 
-    values = env or dict(os.environ)
+    values = dict(os.environ) if env is None else env
 
     hf_mode_missing = [
         name
