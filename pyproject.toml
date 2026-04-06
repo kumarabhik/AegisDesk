@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openenv-support-ops-env"
 version = "0.1.0"
-description = "OpenEnv environment for B2B SaaS support operations"
+description = "AegisDesk: OpenEnv environment for B2B SaaS support operations"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

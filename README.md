@@ -1,14 +1,14 @@
 ---
-title: support_ops_env
+title: AegisDesk
 sdk: docker
 app_port: 7860
 tags:
   - openenv
 ---
 
-# support_ops_env
+# AegisDesk
 
-`support_ops_env` is a real-world OpenEnv benchmark for B2B SaaS support operations. Each episode presents a small inbox of 2-3 tickets. The agent must identify the primary case, inspect the right internal records, take safe operational actions, draft a structured customer reply, and finalize the case.
+`AegisDesk` is the public-facing name for `support_ops_env`, a real-world OpenEnv benchmark for B2B SaaS support operations. Each episode presents a small inbox of 2-3 tickets. The agent must identify the primary case, inspect the right internal records, take safe operational actions, draft a structured customer reply, and finalize the case.
 
 If you prefer a longer, blog-style explanation of what the project does, how the environment works, and how to run and verify it end to end, read `PROJECT_WALKTHROUGH.md`.
 If you want a more professional, judge-facing explanation of the benchmark's purpose and what makes it distinctive, read `SUBMISSION_OVERVIEW.md`.

@@ -1,4 +1,4 @@
-# support_ops_env Roadmap
+# AegisDesk Roadmap
 
 ## Status Legend
 - `[x]` Done
@@ -6,7 +6,7 @@
 - `[ ]` Not started
 
 ## Summary
-This roadmap turns `support_ops_env` from an empty repo into a complete OpenEnv project for B2B SaaS support operations. The work is organized to reduce validator risk early, then layer in task content, dense rewards, inference reproducibility, hackathon-compliant HF-router inference, and deployment readiness.
+This roadmap turns `AegisDesk` from an empty repo into a complete OpenEnv project for B2B SaaS support operations. The underlying technical environment id remains `support_ops_env`, while the public-facing benchmark name is `AegisDesk`. The work is organized to reduce validator risk early, then layer in task content, dense rewards, inference reproducibility, hackathon-compliant HF-router inference, and deployment readiness.
 
 ## [x] Phase 0: Planning and project definition
 Deliverables:

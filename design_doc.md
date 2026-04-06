@@ -1,7 +1,7 @@
-# support_ops_env Design Document
+# AegisDesk Design Document
 
 ## Overview
-`support_ops_env` is a standalone OpenEnv environment that simulates a real B2B SaaS support-operations workflow. An agent receives a small inbox of 2-3 support tickets, identifies the primary case to resolve, investigates internal records, applies safe operational actions, drafts a structured response, and finalizes a policy-compliant resolution.
+`AegisDesk` is the public-facing name for `support_ops_env`, a standalone OpenEnv environment that simulates a real B2B SaaS support-operations workflow. An agent receives a small inbox of 2-3 support tickets, identifies the primary case to resolve, investigates internal records, applies safe operational actions, drafts a structured response, and finalizes a policy-compliant resolution.
 
 The environment is designed for training and evaluating agents on tasks that resemble real support work:
 - triaging competing tickets
@@ -15,7 +15,8 @@ This environment aims to fill a useful benchmark gap between toy workflows and o
 ## Session Handoff Summary
 Use this section to quickly restore project context if a future coding session loses prior chat history.
 
-- Project name: `support_ops_env`
+- Public project name: `AegisDesk`
+- Technical environment id: `support_ops_env`
 - Purpose: a real-world OpenEnv benchmark for B2B SaaS support operations, not a toy workflow
 - Episode shape: each episode is a small inbox of 2-3 tickets with one primary ticket and 1-2 distractors
 - Core agent job: identify the correct ticket, inspect the right records, take safe operational actions, draft a structured reply, and finalize the case
