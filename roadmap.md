@@ -216,7 +216,7 @@ Exit criteria:
 - Local setup variables are documented in a non-secret example file.
 
 Current status:
-- README and `RESULTS.md` provide the retained public benchmark narrative and verification flow.
+- README, `design_doc.md`, `SUBMISSION_OVERVIEW.md`, and `RESULTS.md` provide the retained public benchmark narrative and verification flow.
 - `.env.example` documents the expected environment variables without storing secrets.
 
 ## [x] Phase 12: Final evaluator compliance
@@ -242,11 +242,11 @@ Deliverables:
 - Surface those extras in the README without changing the judged environment path.
 
 Exit criteria:
-- A working training starter script exists in the repo.
+- A working training starter script and training notes exist in the repo.
 - The core submission wiring remains unchanged.
 
 Current status:
-- `training/train_grpo_aegisdesk.py` now exists as a post-submission training extra.
+- `training/README.md` and `training/train_grpo_aegisdesk.py` now exist as post-submission training extras.
 - The environment id, Space URL, validator path, and baseline submission flow remain unchanged.
 
 ## [x] Phase 14: Interactive console and latency polish

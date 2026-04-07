@@ -16,7 +16,9 @@ Quick links:
 - Live app: `https://i4mgr00t-meta.hf.space`
 - Captured verification and benchmark outputs: `RESULTS.md`
 
-If you want to experiment with optional TRL training after submission, use `training/train_grpo_aegisdesk.py` as the starter entrypoint.
+If you want the deeper architecture notes, read `design_doc.md`.
+If you want a polished judge-facing narrative, read `SUBMISSION_OVERVIEW.md`.
+If you want to experiment with optional TRL training after submission, read `training/README.md` and use `training/train_grpo_aegisdesk.py` as the starter entrypoint.
 
 ## Why this environment exists
 - It models a genuine human workflow instead of a toy task.
@@ -111,6 +113,9 @@ Key files:
 - `run_local_stack.py`
 - `env_doctor.py`
 - `.env.example`
+- `design_doc.md`
+- `SUBMISSION_OVERVIEW.md`
+- `training/README.md`
 - `training/train_grpo_aegisdesk.py`
 - `oracle_tools.py`
 - `oracle_demo.py`
