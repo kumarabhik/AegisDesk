@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from functools import lru_cache
 import os
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import HTMLResponse, ORJSONResponse
 from pydantic import BaseModel
 from pydantic import ValidationError
 import uvicorn
@@ -1439,6 +1441,8 @@ def _prewarm_runtime() -> None:
 
     load_all_fixtures()
     create_environment()
+    task_catalog_payload()
+    benchmark_card_payload()
 
 
 def _prewarm_enabled() -> bool:
@@ -1476,6 +1480,9 @@ else:
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+
+app.add_middleware(GZipMiddleware, minimum_size=700)
 
 
 @app.post("/reset")
@@ -1516,9 +1523,9 @@ def state() -> dict[str, Any]:
     return env.state.model_dump(mode="json")
 
 
-@app.get("/tasks")
-def tasks() -> dict[str, Any]:
-    """Return a compact catalog of available benchmark tasks."""
+@lru_cache(maxsize=1)
+def task_catalog_payload() -> dict[str, Any]:
+    """Return a cached compact catalog of available benchmark tasks."""
 
     fixtures = load_all_fixtures()
     return {
@@ -1538,19 +1545,25 @@ def tasks() -> dict[str, Any]:
     }
 
 
+@app.get("/tasks", response_class=ORJSONResponse)
+def tasks() -> dict[str, Any]:
+    """Return a compact catalog of available benchmark tasks."""
+
+    return task_catalog_payload()
+
+
+@lru_cache(maxsize=64)
+def cached_trajectory_report(task_id: str, seed: int) -> dict[str, Any]:
+    """Cache deterministic local oracle reports for faster repeat inspection."""
+
+    return generate_trajectory_report(task_id, seed=seed)
+
+
+@lru_cache(maxsize=1)
 def benchmark_card_payload() -> dict[str, Any]:
     """Return a compact public summary of the benchmark."""
 
-    fixtures = load_all_fixtures()
-    catalog = [
-        {
-            "task_id": fixture.task_id,
-            "track": task_track(fixture.task_id),
-            "difficulty": fixture.difficulty.value,
-            "max_steps": fixture.max_steps,
-        }
-        for fixture in (fixtures[task_id] for task_id in all_task_ids())
-    ]
+    catalog = task_catalog_payload()["tasks"]
     core_count = sum(1 for task in catalog if task["track"] == "core")
     extended_count = sum(1 for task in catalog if task["track"] == "extended")
     return {
@@ -1570,6 +1583,8 @@ def benchmark_card_payload() -> dict[str, Any]:
             "interactive console",
             "oracle trajectory viewer",
             "OpenAI-client baseline inference",
+            "gzip-compressed responses",
+            "cached benchmark and trajectory summaries",
         ],
         "routes": {
             "console": "/console",
@@ -1582,7 +1597,7 @@ def benchmark_card_payload() -> dict[str, Any]:
     }
 
 
-@app.get("/benchmark-card")
+@app.get("/benchmark-card", response_class=ORJSONResponse)
 def benchmark_card() -> dict[str, Any]:
     """Return a machine-readable benchmark summary for judges and demos."""
 
@@ -1621,12 +1636,12 @@ def console() -> str:
     return CONSOLE_HTML
 
 
-@app.get("/trajectory-report")
+@app.get("/trajectory-report", response_class=ORJSONResponse)
 def trajectory_report(task_id: str, seed: int = 7) -> dict[str, Any]:
     """Return a step-by-step oracle trajectory report for one task."""
 
     try:
-        return generate_trajectory_report(task_id, seed=seed)
+        return cached_trajectory_report(task_id, seed)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

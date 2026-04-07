@@ -265,6 +265,14 @@ python measure_latency.py --runs 3
 
 This compares local startup and first-hit timings with prewarming enabled versus disabled.
 
+Current low-risk performance improvements:
+- startup prewarming loads fixtures plus the shared environment before the first interactive request
+- `/tasks` and `/benchmark-card` are cached because they are deterministic fixture-derived payloads
+- `/trajectory-report` is cached per task/seed because oracle reports are deterministic and read-only
+- gzip compression is enabled for larger HTML and JSON responses
+
+These changes target the real bottlenecks in this stack: startup work, repeated deterministic report generation, and response serialization. Unlike a numeric media pipeline, SIMD is not the main latency lever for this benchmark service.
+
 ## Baseline inference
 The root `inference.py` script uses the OpenAI client.
 It now emits structured stdout lines tagged as `[START]`, `[STEP]`, and `[END]` for evaluator-friendly parsing.

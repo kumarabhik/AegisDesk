@@ -7,7 +7,10 @@ This script launches the local FastAPI app twice:
 It then measures:
 - startup time until `/health` becomes ready
 - first `/tasks` latency
+- first `/benchmark-card` latency
 - first `/reset` latency
+- first `/trajectory-report` latency
+- repeated `/trajectory-report` latency after caching
 - combined time-to-first-reset (startup + first reset)
 
 This makes it easy to quantify the benefit of the startup prewarm path.
@@ -129,16 +132,28 @@ def _run_once(*, prewarm: bool, timeout_seconds: int, seed: int) -> dict[str, fl
     try:
         startup_seconds = _wait_for_health(base_url, timeout_seconds, process)
         tasks_seconds, _ = _timed_request(base_url, "/tasks")
+        benchmark_card_seconds, _ = _timed_request(base_url, "/benchmark-card")
         reset_seconds, _ = _timed_request(
             base_url,
             "/reset",
             method="POST",
             payload={"task_id": "billing_seat_adjustment", "seed": seed},
         )
+        trajectory_report_seconds, _ = _timed_request(
+            base_url,
+            f"/trajectory-report?task_id=billing_seat_adjustment&seed={seed}",
+        )
+        trajectory_report_cached_seconds, _ = _timed_request(
+            base_url,
+            f"/trajectory-report?task_id=billing_seat_adjustment&seed={seed}",
+        )
         return {
             "startup_seconds": startup_seconds,
             "first_tasks_seconds": tasks_seconds,
+            "first_benchmark_card_seconds": benchmark_card_seconds,
             "first_reset_seconds": reset_seconds,
+            "first_trajectory_report_seconds": trajectory_report_seconds,
+            "cached_trajectory_report_seconds": trajectory_report_cached_seconds,
             "time_to_first_reset_seconds": startup_seconds + reset_seconds,
         }
     finally:
@@ -199,6 +214,24 @@ def measure_latency(*, runs: int, timeout_seconds: int) -> dict[str, Any]:
         "first_reset_latency_pct_saved": _delta_pct(
             cold["first_reset_seconds"], warm["first_reset_seconds"]
         ),
+        "benchmark_card_latency_ms_saved": _delta_ms(
+            cold["first_benchmark_card_seconds"], warm["first_benchmark_card_seconds"]
+        ),
+        "benchmark_card_latency_pct_saved": _delta_pct(
+            cold["first_benchmark_card_seconds"], warm["first_benchmark_card_seconds"]
+        ),
+        "first_trajectory_report_ms_saved": _delta_ms(
+            cold["first_trajectory_report_seconds"], warm["first_trajectory_report_seconds"]
+        ),
+        "first_trajectory_report_pct_saved": _delta_pct(
+            cold["first_trajectory_report_seconds"], warm["first_trajectory_report_seconds"]
+        ),
+        "cached_trajectory_report_ms_saved": _delta_ms(
+            cold["cached_trajectory_report_seconds"], warm["cached_trajectory_report_seconds"]
+        ),
+        "cached_trajectory_report_pct_saved": _delta_pct(
+            cold["cached_trajectory_report_seconds"], warm["cached_trajectory_report_seconds"]
+        ),
         "startup_overhead_ms": round(
             (warm["startup_seconds"] - cold["startup_seconds"]) * 1000.0, 2
         ),
@@ -224,6 +257,7 @@ def measure_latency(*, runs: int, timeout_seconds: int) -> dict[str, Any]:
         "comparison": comparison,
         "notes": [
             "Positive *_ms_saved values mean prewarming reduced the measured latency.",
+            "The benchmark-card and trajectory-report probes measure the new cached read-only endpoints.",
             "Positive startup_overhead_ms means startup took longer because work was shifted earlier.",
             "time_to_first_reset combines startup time and the first /reset call.",
         ],
