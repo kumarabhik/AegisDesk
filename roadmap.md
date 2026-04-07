@@ -11,11 +11,11 @@ This roadmap turns `AegisDesk` from an empty repo into a complete OpenEnv projec
 ## [x] Phase 0: Planning and project definition
 Deliverables:
 - Define the environment direction, task shape, reward philosophy, and OpenEnv-compatible architecture.
-- Create `design_doc.md` and `roadmap.md` as the implementation guide for the project.
+- Create the implementation guide for the project.
 
 Exit criteria:
 - The environment concept and task set are locked.
-- The design and roadmap documents exist and are ready to guide implementation.
+- The roadmap is ready to guide implementation.
 
 ## [x] Phase 1: Scaffold and project shape
 Deliverables:
@@ -101,7 +101,7 @@ Deliverables:
 - Implement root `inference.py` using the OpenAI client and environment variables.
 - Add fixed prompting, JSON action parsing, fallback behavior, and deterministic task order.
 - Write `README.md` with environment motivation, action and observation spaces, task descriptions, setup, validation, deployment, and baseline scores.
-- Keep `design_doc.md` and `roadmap.md` aligned with the actual implementation.
+- Keep the public documentation aligned with the actual implementation.
 
 Implementation notes:
 - Use `temperature=0` by default.
@@ -145,7 +145,7 @@ Current status:
 ## [x] Phase 8: Hackathon submission compliance
 Deliverables:
 - Update `inference.py` so the preferred submission path uses `HF_TOKEN` with the Hugging Face router.
-- Update `README.md`, `design_doc.md`, and `roadmap.md` so the documented setup matches the hackathon guidance.
+- Update the public docs so the documented setup matches the hackathon guidance.
 - Push the repo to the Hugging Face Space and configure the required variables/secrets.
 - Verify the live Space returns `200` and supports `/`, `/reset`, `/step`, and `/state`.
 - Record the final submission-ready baseline path and final deployment status.
@@ -176,18 +176,18 @@ Current status:
 Deliverables:
 - Add a reusable verification helper for local and live HTTP endpoint checks.
 - Document a concise final submission checklist in the README.
-- Sync the design doc with the final deployed state so the repo is self-describing.
+- Sync the retained public docs with the final deployed state so the repo is self-describing.
 - Re-run validation and live checks after the hardening pass.
 
 Exit criteria:
 - A single command can verify the root, reset, step, and state endpoints of the running service.
 - The README contains a final checklist that can be followed without chat context.
-- The design doc reflects the final live deployment status and baseline path.
+- The retained public docs reflect the final live deployment status and baseline path.
 
 Current status:
 - `verify_space.py` is the reusable live/local verification helper for `/`, `/reset`, `/step`, and `/state`.
 - README includes a final submission checklist and live verification command.
-- The design doc now includes a deployment status snapshot with the live Space URL and baseline scores.
+- `RESULTS.md` now captures the latest live deployment and baseline evidence.
 
 ## [x] Phase 10: Submission audit and executive polish
 Deliverables:
@@ -207,18 +207,16 @@ Current status:
 
 ## [x] Phase 11: Narrative and operator documentation
 Deliverables:
-- Add a long-form, blog-style walkthrough for readers who prefer explanation over checklist-style docs.
-- Add a polished, submission-facing narrative that explains the benchmark’s real-world value and what makes it distinctive.
+- Add polished reader-facing documentation that explains the benchmark's real-world value and what makes it distinctive.
 - Add a checked-in `.env.example` so local setup is easier without ever committing secrets.
 
 Exit criteria:
 - A new reader can understand the project, run it, and verify it without relying on chat history.
-- The repo includes both operator documentation and a judge-facing benchmark narrative.
+- The repo includes enough public documentation for operators and judges.
 - Local setup variables are documented in a non-secret example file.
 
 Current status:
-- `PROJECT_WALKTHROUGH.md` explains the project, architecture, run flow, and verification flow in a blog-style format.
-- `SUBMISSION_OVERVIEW.md` provides a more polished and professional benchmark narrative.
+- README and `RESULTS.md` provide the retained public benchmark narrative and verification flow.
 - `.env.example` documents the expected environment variables without storing secrets.
 
 ## [x] Phase 12: Final evaluator compliance
@@ -244,11 +242,11 @@ Deliverables:
 - Surface those extras in the README without changing the judged environment path.
 
 Exit criteria:
-- A working training starter script and training notes exist in the repo.
+- A working training starter script exists in the repo.
 - The core submission wiring remains unchanged.
 
 Current status:
-- `training/README.md` and `training/train_grpo_aegisdesk.py` now exist as post-submission training extras.
+- `training/train_grpo_aegisdesk.py` now exists as a post-submission training extra.
 - The environment id, Space URL, validator path, and baseline submission flow remain unchanged.
 
 ## [x] Phase 14: Interactive console and latency polish
