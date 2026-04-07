@@ -77,6 +77,13 @@ The initial release ships 3 deterministic tasks:
 3. `suspicious_admin_request` (hard)
 - Detect a likely account-takeover scenario, inspect verification/security records, escalate to security, and refuse unsafe fulfillment.
 
+The repo also includes an optional extended task pack for demos, trajectory reports, and post-submission experimentation:
+- `tax_exemption_credit_review` (easy)
+- `api_rate_limit_escalation` (medium)
+- `admin_role_transfer_verification` (hard)
+
+The judged three-task core remains unchanged. The extended pack is additive and opt-in.
+
 ## Reward design
 Reward is dense and deterministic:
 
@@ -112,6 +119,8 @@ Key files:
 - `HF_ARTICLE_DRAFT.md`
 - `training/README.md`
 - `training/train_grpo_aegisdesk.py`
+- `oracle_tools.py`
+- `oracle_demo.py`
 - `openenv.yaml`
 
 ## Setup
@@ -160,6 +169,22 @@ The interactive console uses the existing API and adds:
 - a structured action form
 - live observation and state panels
 - ticket and record shortcuts for faster manual exploration
+
+If you want to inspect a near-perfect trajectory step by step in the browser, open:
+
+```text
+http://127.0.0.1:7860/trajectory-viewer
+```
+
+The trajectory viewer calls the new read-only report endpoint:
+- `/trajectory-report?task_id=<task_id>&seed=<seed>`
+
+If you want to generate oracle demo runs from the CLI, use:
+
+```bash
+python oracle_demo.py --pack all --output-json reports/oracle-{task_id}.json --output-md reports/oracle-{task_id}.md
+oracle-demo --pack core
+```
 
 If you want to measure the latency impact of startup prewarming, run:
 

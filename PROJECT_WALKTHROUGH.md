@@ -12,7 +12,9 @@ The core idea is simple, but the design is intentionally disciplined. Every epis
 
 The project currently ships with three canonical tasks that form an intentional progression. The easy task, `billing_seat_adjustment`, checks whether the agent can resolve a routine but structured billing correction. The medium task, `login_incident_triage`, tests whether the agent can recognize that a user problem is actually part of a wider incident and avoid taking reckless remediation steps. The hard task, `suspicious_admin_request`, is designed to test security judgment, because the agent has to detect an unverified and potentially malicious request, inspect the right security context, and escalate rather than comply. In all three cases, the environment models a realistic support judgment problem rather than a toy objective.
 
-From a technical point of view, the project is organized around the OpenEnv contract. The typed action, observation, and state models live in `models.py`. The environment logic itself lives in `server/environment.py`, with the API surface exposed by `server/app.py`. The grading logic and dense reward shaping are factored into `server/grader.py` and `server/reward.py`, while the task fixtures live under `server/task_data`. The project also includes `client.py` for interacting with the environment, `inference.py` for running a baseline model against the tasks, `verify_space.py` for checking the running service over HTTP, `run_local_stack.py` for starting and checking a local server in one command, `env_doctor.py` for checking environment-variable readiness without printing secrets, and `submission_audit.py` for running an end-to-end readiness audit that combines local test status, validator status, remote repository visibility, and live Space verification into a single report.
+On top of that judged core, the repo now includes an optional extended pack with additional billing, incident, and admin-verification scenarios. Those tasks do not change the default judged three-task cycle, but they make the project more useful as a broader demo and experimentation benchmark.
+
+From a technical point of view, the project is organized around the OpenEnv contract. The typed action, observation, and state models live in `models.py`. The environment logic itself lives in `server/environment.py`, with the API surface exposed by `server/app.py`. The grading logic and dense reward shaping are factored into `server/grader.py` and `server/reward.py`, while the task fixtures live under `server/task_data`. The project also includes `client.py` for interacting with the environment, `inference.py` for running a baseline model against the tasks, `verify_space.py` for checking the running service over HTTP, `run_local_stack.py` for starting and checking a local server in one command, `env_doctor.py` for checking environment-variable readiness without printing secrets, `oracle_demo.py` plus `oracle_tools.py` for near-perfect trajectory demos, and `submission_audit.py` for running an end-to-end readiness audit that combines local test status, validator status, remote repository visibility, and live Space verification into a single report.
 
 What makes the environment particularly practical is that it stays deterministic while still feeling operationally realistic. The records the agent can inspect include account snapshots, invoices, incident information, approved contacts, and security alerts. The agent can open tickets, inspect records, search the knowledge base, set priority, set status, add tags, apply credits, escalate, draft a structured reply, and finalize a resolution. Because the reply step is structured rather than free-form graded, the environment avoids fuzzy semantic scoring and stays reproducible. This is important in a benchmark setting, because deterministic evaluation is far easier to trust and debug than model-judged free text.
 
@@ -48,6 +50,14 @@ If you do not want to manage multiple terminals manually, the repository now inc
 ```bash
 python run_local_stack.py
 ```
+
+If you want to inspect a near-perfect trajectory rather than driving the benchmark manually, you now have two options. The first is the CLI oracle runner:
+
+```bash
+python oracle_demo.py --pack all --output-json reports/oracle-{task_id}.json --output-md reports/oracle-{task_id}.md
+```
+
+The second is the browser-based report viewer at `http://127.0.0.1:7860/trajectory-viewer`, which loads a step-by-step oracle report from `/trajectory-report`.
 
 If your goal is to run the baseline model rather than just host the environment, the project supports two main inference paths. The official hackathon path uses the OpenAI client pointed at the Hugging Face router. In that setup, you provide `HF_TOKEN`, optionally provide `API_BASE_URL` if you want to be explicit, set `MODEL_NAME`, and point `ENV_BASE_URL` at either your local server or the deployed Space. Before you do that, you can inspect your local setup without printing any secrets by running `python env_doctor.py`. A working example looks like this:
 

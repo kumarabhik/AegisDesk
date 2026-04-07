@@ -1,0 +1,150 @@
+task_id: tax_exemption_credit_review
+difficulty: easy
+task_brief: >
+  A customer says the latest invoice incorrectly charged sales tax even though a valid
+  resale certificate is already on file. Find the right ticket, inspect the right
+  billing records, apply the exact credit, send the structured tax reply, and resolve
+  the case without unnecessary escalation.
+primary_ticket_id: TICKET-4001
+max_steps: 12
+tickets:
+  - ticket_id: TICKET-4001
+    subject: "April invoice charged sales tax even though our exemption was approved"
+    from_contact: "Nina Patel <billing@latticeworks.io>"
+    account_id: "acct_latticeworks"
+    summary: "Customer says the April invoice includes 96 USD in sales tax despite an approved resale certificate already being on file."
+    priority: normal
+    status: open
+    tags: ["billing", "tax"]
+    allowed_actions:
+      - open_ticket
+      - inspect_record
+      - search_kb
+      - set_status
+      - add_tag
+      - apply_credit
+      - draft_reply
+      - finalize_resolution
+  - ticket_id: TICKET-4002
+    subject: "Can support change our logo in the footer?"
+    from_contact: "Marcus Reed <ops@pebblegrid.dev>"
+    account_id: "acct_pebblegrid"
+    summary: "Simple branding question from a standard account."
+    priority: low
+    status: open
+    tags: ["branding"]
+    allowed_actions:
+      - open_ticket
+  - ticket_id: TICKET-4003
+    subject: "Where can I export our user list?"
+    from_contact: "Jules Kim <admin@northfield.ai>"
+    account_id: "acct_northfield"
+    summary: "How-to question unrelated to the billing queue."
+    priority: low
+    status: open
+    tags: ["how-to"]
+    allowed_actions:
+      - open_ticket
+records:
+  - record_id: acct_latticeworks
+    kind: account
+    title: "Account snapshot: Latticeworks"
+    body: "Billing profile shows tax-exempt status active since January 14. Approved finance contact Nina Patel is listed on the account."
+    related_ticket_ids: ["TICKET-4001"]
+    keywords: ["account", "billing", "tax", "certificate"]
+  - record_id: inv_apr_7711
+    kind: invoice
+    title: "Invoice INV-7711"
+    body: "April invoice line items are correct, but 96 USD sales tax was charged in error. Credit amount eligible for support correction: 96 USD."
+    related_ticket_ids: ["TICKET-4001"]
+    keywords: ["invoice", "tax", "credit", "april"]
+  - record_id: contract_latticeworks
+    kind: contract
+    title: "Tax handling addendum"
+    body: "When tax-exempt status is already active, support may issue a correcting credit and note that future invoices should remain exempt."
+    related_ticket_ids: ["TICKET-4001"]
+    keywords: ["contract", "tax", "credit", "policy"]
+kb_articles:
+  - article_id: kb_tax_credit_policy
+    title: "Tax exemption correction policy"
+    summary: "Explains how support should fix invoices that charged tax after exemption approval."
+    content: "Confirm the exemption is on file, verify the invoice amount, issue the correcting credit, and reassure the customer that future invoices should remain tax-exempt."
+    keywords: ["tax", "invoice", "credit", "exemption", "policy"]
+rubric:
+  - check_id: select_primary
+    label: "Select the tax correction ticket"
+    weight: 0.15
+    kind: selected_ticket
+    params:
+      ticket_id: TICKET-4001
+  - check_id: inspect_required_records
+    label: "Inspect account and invoice"
+    weight: 0.25
+    kind: viewed_records_all
+    params:
+      record_ids: ["acct_latticeworks", "inv_apr_7711"]
+  - check_id: apply_exact_credit
+    label: "Apply the exact tax credit"
+    weight: 0.25
+    kind: exact_credit
+    params:
+      ticket_id: TICKET-4001
+      amount: 96.0
+      currency: "USD"
+  - check_id: add_tax_tag
+    label: "Add the tax credit tag"
+    weight: 0.1
+    kind: tag_added
+    params:
+      ticket_id: TICKET-4001
+      tag: "tax-credit-approved"
+  - check_id: resolve_ticket
+    label: "Mark ticket resolved"
+    weight: 0.1
+    kind: ticket_status
+    params:
+      ticket_id: TICKET-4001
+      status: "resolved"
+  - check_id: use_reply_template
+    label: "Use the tax credit reply template"
+    weight: 0.05
+    kind: reply_template
+    params:
+      template_id: "tax_credit_resolution"
+  - check_id: include_reply_items
+    label: "Include key tax reply points"
+    weight: 0.05
+    kind: reply_contains
+    params:
+      checklist:
+        - "acknowledge_tax_issue"
+        - "confirm_tax_credit_amount"
+        - "confirm_certificate_on_file"
+  - check_id: finalize_correctly
+    label: "Finalize with the correct resolution code"
+    weight: 0.05
+    kind: final_resolution_code
+    params:
+      resolution_code: "tax_credit_applied"
+forbidden_actions:
+  - action_type: escalate
+    conditions:
+      escalation_team: "security"
+    reason: "Security escalation is unnecessary for a routine tax correction."
+    penalty: 0.08
+    terminal: false
+reply_requirements:
+  template_id: "tax_credit_resolution"
+  checklist:
+    - "acknowledge_tax_issue"
+    - "confirm_tax_credit_amount"
+    - "confirm_certificate_on_file"
+oracle_reference_path:
+  - "open_ticket TICKET-4001"
+  - "inspect_record acct_latticeworks"
+  - "inspect_record inv_apr_7711"
+  - "apply_credit 96 USD"
+  - "add_tag tax-credit-approved"
+  - "set_status resolved"
+  - "draft_reply tax_credit_resolution"
+  - "finalize_resolution tax_credit_applied"

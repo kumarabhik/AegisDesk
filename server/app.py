@@ -19,12 +19,14 @@ except ImportError:
 
 try:
     from ..models import SupportAction, SupportObservation
+    from ..oracle_tools import generate_trajectory_report
     from .environment import SupportOpsEnvironment
-    from .fixtures import load_all_fixtures
+    from .fixtures import all_task_ids, load_all_fixtures, task_track
 except ImportError:
     from models import SupportAction, SupportObservation
+    from oracle_tools import generate_trajectory_report
     from server.environment import SupportOpsEnvironment
-    from server.fixtures import load_all_fixtures
+    from server.fixtures import all_task_ids, load_all_fixtures, task_track
 
 
 _shared_env: SupportOpsEnvironment | None = None
@@ -703,6 +705,415 @@ CONSOLE_HTML = """<!doctype html>
 </html>
 """
 
+TRAJECTORY_VIEWER_HTML = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AegisDesk Trajectory Viewer</title>
+  <style>
+    :root {
+      --bg: #f4f0e6;
+      --panel: #fffaf1;
+      --ink: #17212b;
+      --muted: #546170;
+      --line: #d8cab3;
+      --accent: #0f766e;
+      --accent-soft: #daf0ec;
+      --danger: #9f1239;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      --sans: "Segoe UI", "Aptos", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15,118,110,0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(159,18,57,0.06), transparent 20%),
+        linear-gradient(180deg, #f8f4ec, var(--bg));
+    }
+    .wrap {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+      display: grid;
+      gap: 20px;
+    }
+    .hero {
+      display: grid;
+      gap: 8px;
+    }
+    .eyebrow {
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 54px);
+      line-height: 0.95;
+    }
+    .sub {
+      color: var(--muted);
+      max-width: 840px;
+      line-height: 1.6;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 18px;
+    }
+    .panel {
+      background: rgba(255,250,241,0.88);
+      border: 1px solid rgba(84,97,112,0.16);
+      border-radius: 20px;
+      box-shadow: 0 18px 48px rgba(23,33,43,0.07);
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(84,97,112,0.12);
+      background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,250,241,0.95));
+    }
+    .panel-head h2 {
+      margin: 0;
+      font-size: 15px;
+    }
+    .panel-body {
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+    .field label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    select, input, button {
+      font: inherit;
+    }
+    select, input {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid rgba(84,97,112,0.24);
+      background: rgba(255,255,255,0.84);
+      padding: 11px 12px;
+      color: var(--ink);
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: white;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: progress;
+    }
+    .status {
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      background: var(--accent-soft);
+      color: var(--accent);
+      border: 1px solid rgba(15,118,110,0.12);
+    }
+    .status.error {
+      background: #fde8ef;
+      border-color: rgba(159,18,57,0.16);
+      color: var(--danger);
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .meta-card {
+      border: 1px solid rgba(84,97,112,0.14);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.72);
+    }
+    .meta-card strong {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .step-list {
+      display: grid;
+      gap: 12px;
+    }
+    details {
+      border: 1px solid rgba(84,97,112,0.14);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.78);
+      overflow: hidden;
+    }
+    summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      font-weight: 700;
+    }
+    summary::-webkit-details-marker { display: none; }
+    .step-body {
+      padding: 0 16px 16px;
+      display: grid;
+      gap: 12px;
+    }
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #e9e4d8;
+      color: #5d4b37;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid rgba(84,97,112,0.12);
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--muted); }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #152330;
+      color: #e8f0f6;
+      border-radius: 14px;
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.55;
+      overflow: auto;
+    }
+    @media (max-width: 1040px) {
+      .grid { grid-template-columns: 1fr; }
+      .meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Oracle Demo Viewer</div>
+      <h1>AegisDesk Trajectory Viewer</h1>
+      <div class="sub">
+        Inspect the near-perfect oracle trajectory for any core or extended task. Each
+        step shows the exact action, reward, rubric progress, penalties, and full rubric
+        breakdown so judges can understand how the benchmark scores a trajectory.
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head"><h2>Report Controls</h2></div>
+        <div class="panel-body">
+          <div id="status" class="status">Loading task catalog...</div>
+
+          <div class="field">
+            <label for="taskSelect">Task</label>
+            <select id="taskSelect"></select>
+          </div>
+
+          <div class="field">
+            <label for="seedInput">Seed</label>
+            <input id="seedInput" type="number" value="7" min="1" step="1">
+          </div>
+
+          <button id="loadBtn" type="button">Load Oracle Trajectory</button>
+
+          <div class="field">
+            <label>Oracle Reference Path</label>
+            <pre id="oraclePath">No report loaded yet.</pre>
+          </div>
+
+          <div class="field">
+            <label>Raw Report</label>
+            <pre id="rawReport">No report loaded yet.</pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Trajectory Summary</h2></div>
+        <div class="panel-body">
+          <div class="meta">
+            <div class="meta-card"><strong>Task</strong><span id="metaTask">-</span></div>
+            <div class="meta-card"><strong>Track</strong><span id="metaTrack">-</span></div>
+            <div class="meta-card"><strong>Difficulty</strong><span id="metaDifficulty">-</span></div>
+            <div class="meta-card"><strong>Final Score</strong><span id="metaScore">-</span></div>
+            <div class="meta-card"><strong>Steps</strong><span id="metaSteps">-</span></div>
+          </div>
+
+          <div class="field">
+            <label>Task Brief</label>
+            <pre id="taskBrief">No report loaded yet.</pre>
+          </div>
+
+          <div class="field">
+            <label>Step Trace</label>
+            <div id="stepList" class="step-list"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const taskSelect = document.getElementById("taskSelect");
+    const statusBox = document.getElementById("status");
+
+    function setStatus(message, kind = "ok") {
+      statusBox.textContent = message;
+      statusBox.className = "status" + (kind === "ok" ? "" : " " + kind);
+    }
+
+    function pretty(value) {
+      return JSON.stringify(value, null, 2);
+    }
+
+    async function api(path) {
+      const response = await fetch(path);
+      if (!response.ok) {
+        throw new Error(await response.text() || ("Request failed with status " + response.status));
+      }
+      return response.json();
+    }
+
+    function renderSummary(report) {
+      document.getElementById("metaTask").textContent = report.task_id;
+      document.getElementById("metaTrack").textContent = report.track;
+      document.getElementById("metaDifficulty").textContent = report.difficulty;
+      document.getElementById("metaScore").textContent = report.final_score.toFixed(2);
+      document.getElementById("metaSteps").textContent = String(report.step_count);
+      document.getElementById("taskBrief").textContent = report.task_brief;
+      document.getElementById("oraclePath").textContent = report.oracle_reference_path.join("\\n");
+      document.getElementById("rawReport").textContent = pretty(report);
+
+      const stepList = document.getElementById("stepList");
+      stepList.innerHTML = "";
+      report.steps.forEach((step) => {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.innerHTML = `<span>Step ${step.step}</span><span>reward=${step.reward.toFixed(2)} | progress=${step.rubric_progress.toFixed(2)} | done=${step.done}</span>`;
+        details.appendChild(summary);
+
+        const body = document.createElement("div");
+        body.className = "step-body";
+        body.innerHTML = `
+          <div class="pill-row">
+            <span class="pill">active ticket: ${step.active_ticket_id || "-"}</span>
+            <span class="pill">error: ${step.last_action_error || "null"}</span>
+            <span class="pill">final score snapshot: ${step.final_score ?? "-"}</span>
+          </div>
+          <div>
+            <strong>Action</strong>
+            <pre>${pretty(step.action)}</pre>
+          </div>
+          <div>
+            <strong>Focus Panel</strong>
+            <pre>${pretty(step.focus_panel)}</pre>
+          </div>
+        `;
+
+        const table = document.createElement("table");
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>Check</th>
+              <th>Score</th>
+              <th>Weighted</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${step.rubric_breakdown.map((item) => `
+              <tr>
+                <td>${item.check_id}</td>
+                <td>${item.score}</td>
+                <td>${item.weighted_score}</td>
+                <td>${item.details}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        `;
+        body.appendChild(table);
+        details.appendChild(body);
+        stepList.appendChild(details);
+      });
+    }
+
+    async function loadTasks() {
+      const payload = await api("/tasks");
+      taskSelect.innerHTML = "";
+      payload.tasks.forEach((task) => {
+        const option = document.createElement("option");
+        option.value = task.task_id;
+        option.textContent = `${task.task_id} (${task.track} / ${task.difficulty})`;
+        taskSelect.appendChild(option);
+      });
+      setStatus("Task catalog loaded. Choose a task and load the oracle trajectory.");
+    }
+
+    async function loadReport() {
+      const button = document.getElementById("loadBtn");
+      button.disabled = true;
+      try {
+        setStatus("Generating oracle trajectory...", "ok");
+        const seed = Number(document.getElementById("seedInput").value || 7);
+        const report = await api(`/trajectory-report?task_id=${encodeURIComponent(taskSelect.value)}&seed=${seed}`);
+        renderSummary(report);
+        setStatus("Oracle trajectory loaded.");
+      } catch (error) {
+        setStatus(String(error), "error");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    document.getElementById("loadBtn").addEventListener("click", loadReport);
+    loadTasks().catch((error) => setStatus(String(error), "error"));
+  </script>
+</body>
+</html>
+"""
+
 
 def create_environment() -> SupportOpsEnvironment:
     """Factory used by OpenEnv and the custom HTTP routes."""
@@ -810,13 +1221,15 @@ def tasks() -> dict[str, Any]:
         "tasks": [
             {
                 "task_id": fixture.task_id,
+                "track": task_track(fixture.task_id),
                 "difficulty": fixture.difficulty.value,
                 "task_brief": fixture.task_brief,
                 "max_steps": fixture.max_steps,
                 "reply_template_id": fixture.reply_requirements.template_id,
                 "reply_checklist": fixture.reply_requirements.checklist,
+                "oracle_available": True,
             }
-            for fixture in fixtures.values()
+            for fixture in (fixtures[task_id] for task_id in all_task_ids())
         ]
     }
 
@@ -840,6 +1253,23 @@ def console() -> str:
     """Serve a lightweight operator console for manual benchmark exploration."""
 
     return CONSOLE_HTML
+
+
+@app.get("/trajectory-report")
+def trajectory_report(task_id: str, seed: int = 7) -> dict[str, Any]:
+    """Return a step-by-step oracle trajectory report for one task."""
+
+    try:
+        return generate_trajectory_report(task_id, seed=seed)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/trajectory-viewer", response_class=HTMLResponse)
+def trajectory_viewer() -> str:
+    """Serve a read-only oracle trajectory inspection UI."""
+
+    return TRAJECTORY_VIEWER_HTML
 
 
 def main() -> None:

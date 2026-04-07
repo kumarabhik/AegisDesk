@@ -36,6 +36,8 @@ def test_tasks_endpoint_returns_catalog() -> None:
     assert "tasks" in payload
     assert len(payload["tasks"]) >= 3
     assert any(task["task_id"] == "billing_seat_adjustment" for task in payload["tasks"])
+    assert payload["tasks"][0]["task_id"] == "billing_seat_adjustment"
+    assert any(task["track"] == "extended" for task in payload["tasks"])
 
 
 def test_console_endpoint_returns_html() -> None:
@@ -44,3 +46,22 @@ def test_console_endpoint_returns_html() -> None:
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "AegisDesk Console" in response.text
+
+
+def test_trajectory_report_endpoint_returns_scored_report() -> None:
+    client = TestClient(app)
+    response = client.get("/trajectory-report", params={"task_id": "billing_seat_adjustment", "seed": 7})
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["task_id"] == "billing_seat_adjustment"
+    assert payload["track"] == "core"
+    assert payload["final_score"] >= 0.95
+    assert payload["step_count"] >= 1
+
+
+def test_trajectory_viewer_endpoint_returns_html() -> None:
+    client = TestClient(app)
+    response = client.get("/trajectory-viewer")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "AegisDesk Trajectory Viewer" in response.text

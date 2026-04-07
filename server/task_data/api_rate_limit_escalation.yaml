@@ -1,0 +1,158 @@
+task_id: api_rate_limit_escalation
+difficulty: medium
+task_brief: >
+  An enterprise customer reports sustained API 429 errors while a shared edge issue may
+  already be active. Identify the right ticket, inspect the incident context before
+  acting, escalate to incident response, communicate safely, and finalize without
+  applying a misleading manual override.
+primary_ticket_id: TICKET-5001
+max_steps: 12
+tickets:
+  - ticket_id: TICKET-5001
+    subject: "Our production ingest pipeline is getting 429s every minute"
+    from_contact: "Sam Ortega <platform@meridianapps.io>"
+    account_id: "acct_meridianapps"
+    summary: "Enterprise customer reports steady API throttling across production workloads and asks support to increase limits immediately."
+    priority: normal
+    status: open
+    tags: ["api", "enterprise"]
+    allowed_actions:
+      - open_ticket
+      - inspect_record
+      - search_kb
+      - set_priority
+      - set_status
+      - add_tag
+      - escalate
+      - draft_reply
+      - finalize_resolution
+  - ticket_id: TICKET-5002
+    subject: "Can I rename a saved dashboard?"
+    from_contact: "Pooja Sen <ops@pixeldock.io>"
+    account_id: "acct_pixeldock"
+    summary: "UI question unrelated to API stability."
+    priority: low
+    status: open
+    tags: ["dashboard"]
+    allowed_actions:
+      - open_ticket
+  - ticket_id: TICKET-5003
+    subject: "Do you support IP allowlists on the Starter plan?"
+    from_contact: "Milo Hart <milo@anchor.dev>"
+    account_id: "acct_anchor"
+    summary: "Product capability question for a non-enterprise account."
+    priority: low
+    status: open
+    tags: ["product"]
+    allowed_actions:
+      - open_ticket
+records:
+  - record_id: incident_edge_442
+    kind: incident
+    title: "Incident 442: Edge throttling regression"
+    body: "Status: mitigating. Shared edge regression is causing bursts of 429 responses for some enterprise tenants. Do not promise manual permanent quota changes while mitigation is ongoing."
+    related_ticket_ids: ["TICKET-5001"]
+    keywords: ["incident", "429", "rate-limit", "edge", "api"]
+  - record_id: acct_meridianapps
+    kind: account
+    title: "Account snapshot: Meridian Apps"
+    body: "Plan: Enterprise. Contracted rate limit is already above default. Support should escalate sustained 429s tied to edge incidents to incident response."
+    related_ticket_ids: ["TICKET-5001"]
+    keywords: ["account", "enterprise", "rate-limit", "api"]
+  - record_id: kb_rate_limit_playbook
+    kind: kb_article
+    title: "How support handles active API throttling incidents"
+    body: "Check the incident record first, set high priority for production impact, escalate to incident response, and set update expectations rather than promising ad hoc overrides."
+    related_ticket_ids: ["TICKET-5001"]
+    keywords: ["incident", "api", "429", "playbook"]
+kb_articles:
+  - article_id: kb_api_incident_response
+    title: "API incident communication guidance"
+    summary: "How to reply when customers are affected by active API incidents."
+    content: "Acknowledge the production impact, reference the incident identifier, explain that mitigation is underway, and promise the next status update."
+    keywords: ["api", "incident", "429", "response", "status"]
+rubric:
+  - check_id: select_primary
+    label: "Select the API incident ticket"
+    weight: 0.15
+    kind: selected_ticket
+    params:
+      ticket_id: TICKET-5001
+  - check_id: inspect_incident_context
+    label: "Inspect incident and account records"
+    weight: 0.2
+    kind: viewed_records_all
+    params:
+      record_ids: ["incident_edge_442", "acct_meridianapps"]
+  - check_id: raise_priority
+    label: "Raise priority to high"
+    weight: 0.1
+    kind: ticket_priority
+    params:
+      ticket_id: TICKET-5001
+      priority: "high"
+  - check_id: mark_escalated
+    label: "Mark ticket escalated"
+    weight: 0.1
+    kind: ticket_status
+    params:
+      ticket_id: TICKET-5001
+      status: "escalated"
+  - check_id: add_incident_tag
+    label: "Add incident linkage tag"
+    weight: 0.1
+    kind: tag_added
+    params:
+      ticket_id: TICKET-5001
+      tag: "incident-edge-442"
+  - check_id: escalate_incident_response
+    label: "Escalate to incident response"
+    weight: 0.15
+    kind: escalation_team
+    params:
+      ticket_id: TICKET-5001
+      escalation_team: "incident_response"
+  - check_id: use_reply_template
+    label: "Use the API incident reply template"
+    weight: 0.05
+    kind: reply_template
+    params:
+      template_id: "api_rate_limit_incident"
+  - check_id: include_reply_items
+    label: "Include key API incident reply points"
+    weight: 0.1
+    kind: reply_contains
+    params:
+      checklist:
+        - "acknowledge_429_impact"
+        - "reference_incident_id"
+        - "set_next_update_expectation"
+  - check_id: finalize_correctly
+    label: "Finalize as incident escalation"
+    weight: 0.05
+    kind: final_resolution_code
+    params:
+      resolution_code: "incident_escalated"
+forbidden_actions:
+  - action_type: finalize_resolution
+    conditions:
+      resolution_code: "manual_quota_increase"
+    reason: "Granting a manual quota increase during a shared edge incident is misleading and operationally unsafe."
+    penalty: 0.2
+    terminal: true
+reply_requirements:
+  template_id: "api_rate_limit_incident"
+  checklist:
+    - "acknowledge_429_impact"
+    - "reference_incident_id"
+    - "set_next_update_expectation"
+oracle_reference_path:
+  - "open_ticket TICKET-5001"
+  - "inspect_record incident_edge_442"
+  - "inspect_record acct_meridianapps"
+  - "set_priority high"
+  - "set_status escalated"
+  - "add_tag incident-edge-442"
+  - "escalate incident_response"
+  - "draft_reply api_rate_limit_incident"
+  - "finalize_resolution incident_escalated"
