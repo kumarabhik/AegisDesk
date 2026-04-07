@@ -14,6 +14,9 @@ Quick links:
 - GitHub repo: `https://github.com/kumarabhik/AegisDesk`
 - Hugging Face Space: `https://huggingface.co/spaces/I4mGr00T/Meta`
 - Live app: `https://i4mgr00t-meta.hf.space`
+- Browser landing page: `https://i4mgr00t-meta.hf.space/home`
+- Interactive console: `https://i4mgr00t-meta.hf.space/console`
+- Oracle trajectory viewer: `https://i4mgr00t-meta.hf.space/trajectory-viewer`
 - Captured verification and benchmark outputs: `RESULTS.md`
 
 If you want the deeper architecture notes, read `design_doc.md`.
@@ -218,6 +221,19 @@ http://127.0.0.1:7860/trajectory-viewer
 
 The trajectory viewer calls the new read-only report endpoint:
 - `/trajectory-report?task_id=<task_id>&seed=<seed>`
+
+If you want a polished human-facing overview page in the browser, open:
+
+```text
+http://127.0.0.1:7860/home
+```
+
+The root route now behaves intelligently:
+- browser clients that request HTML see the landing page
+- validators and API clients still receive the machine-friendly JSON health payload
+
+If you want a compact machine-readable summary for judges or tooling, open:
+- `/benchmark-card`
 
 Quick manual verification in `/trajectory-viewer`:
 - Task: `billing_seat_adjustment`

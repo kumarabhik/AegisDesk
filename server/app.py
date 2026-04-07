@@ -31,6 +31,310 @@ except ImportError:
 
 _shared_env: SupportOpsEnvironment | None = None
 
+LANDING_HTML = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AegisDesk</title>
+  <style>
+    :root {
+      --bg: #f4efe5;
+      --panel: rgba(255, 250, 242, 0.92);
+      --ink: #1d2a39;
+      --muted: #52606d;
+      --line: rgba(140, 108, 70, 0.18);
+      --accent: #0f7a5a;
+      --accent-2: #8b5e34;
+      --dark: #18232e;
+      --sans: "Segoe UI", "Aptos", system-ui, sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: var(--sans);
+      background:
+        radial-gradient(circle at top left, rgba(15,122,90,0.10), transparent 24%),
+        radial-gradient(circle at top right, rgba(139,94,52,0.13), transparent 22%),
+        linear-gradient(180deg, #faf7f1 0%, var(--bg) 100%);
+    }
+    .wrap {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 34px 20px 50px;
+      display: grid;
+      gap: 24px;
+    }
+    .hero {
+      display: grid;
+      gap: 14px;
+      padding: 8px 0 4px;
+    }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-2);
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(40px, 7vw, 82px);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+    }
+    .sub {
+      max-width: 880px;
+      font-size: 18px;
+      line-height: 1.65;
+      color: var(--muted);
+    }
+    .hero-actions, .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    a.btn, .chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+    a.btn {
+      padding: 12px 18px;
+      border: 1px solid transparent;
+    }
+    a.btn.primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 14px 32px rgba(15,122,90,0.18);
+    }
+    a.btn.secondary {
+      background: rgba(255,255,255,0.72);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+    .chip {
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.68);
+      border: 1px solid var(--line);
+      color: var(--accent-2);
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 18px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      box-shadow: 0 22px 50px rgba(29, 42, 57, 0.08);
+      overflow: hidden;
+    }
+    .panel-head {
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(82,96,109,0.10);
+      background: linear-gradient(180deg, rgba(255,255,255,0.75), rgba(255,250,242,0.92));
+    }
+    .panel-head h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+    .panel-body {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .metric {
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(82,96,109,0.10);
+    }
+    .metric strong {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .metric span {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .list, .route-list {
+      display: grid;
+      gap: 12px;
+    }
+    .item {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid rgba(82,96,109,0.10);
+      background: rgba(255,255,255,0.72);
+    }
+    .item strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    .item p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+    .route {
+      display: grid;
+      gap: 6px;
+      padding: 13px 14px;
+      border-radius: 16px;
+      background: var(--dark);
+      color: #e8eff5;
+    }
+    .route code {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #b8f1d3;
+    }
+    .route span {
+      color: #a9bac7;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .foot {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 24px 14px 36px; }
+      .metric-grid { grid-template-columns: 1fr; }
+      .sub { font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">OpenEnv Benchmark • Live Space</div>
+      <h1>AegisDesk</h1>
+      <div class="sub">
+        A real-world agent benchmark for B2B SaaS support operations. Agents must triage a
+        live-looking support inbox, inspect the right records, follow policy, avoid unsafe
+        shortcuts, and finalize a deterministic, gradable resolution.
+      </div>
+      <div class="hero-actions">
+        <a class="btn primary" href="/console">Open Interactive Console</a>
+        <a class="btn secondary" href="/trajectory-viewer">Open Trajectory Viewer</a>
+        <a class="btn secondary" href="/benchmark-card">View Benchmark Card</a>
+      </div>
+      <div class="chips">
+        <div class="chip">3 judged core tasks</div>
+        <div class="chip">3 extended demo tasks</div>
+        <div class="chip">Deterministic scores in [0, 1]</div>
+        <div class="chip">OpenAI-client inference path</div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head"><h2>Why This Project Stands Out</h2></div>
+        <div class="panel-body">
+          <div class="metric-grid">
+            <div class="metric"><strong>Core Tasks</strong><span>3</span></div>
+            <div class="metric"><strong>Extended Tasks</strong><span>3</span></div>
+            <div class="metric"><strong>Difficulty Bands</strong><span>Easy→Hard</span></div>
+            <div class="metric"><strong>Scoring</strong><span>Deterministic</span></div>
+          </div>
+          <div class="list">
+            <div class="item">
+              <strong>Real workflow, not a toy</strong>
+              <p>Each episode models support-operations judgment: ticket selection, evidence gathering, safe escalation, and structured customer communication.</p>
+            </div>
+            <div class="item">
+              <strong>Judge-friendly by design</strong>
+              <p>The benchmark includes an interactive console, an oracle trajectory viewer, a reproducible inference script, and captured validation results.</p>
+            </div>
+            <div class="item">
+              <strong>Dense rewards with safety penalties</strong>
+              <p>Agents receive partial credit for meaningful progress and get penalized for loops, irrelevant inspection, or unsafe direct actions.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Live Routes</h2></div>
+        <div class="panel-body">
+          <div class="route-list">
+            <div class="route">
+              <code>/console</code>
+              <span>Manual benchmark UI for resetting episodes, sending structured actions, and inspecting observation/state updates in real time.</span>
+            </div>
+            <div class="route">
+              <code>/trajectory-viewer</code>
+              <span>Judge-friendly oracle viewer with per-step rewards, rubric progress, penalties, and final score breakdown.</span>
+            </div>
+            <div class="route">
+              <code>/benchmark-card</code>
+              <span>Compact machine-readable summary of task counts, validation posture, and public benchmark routes.</span>
+            </div>
+            <div class="route">
+              <code>/tasks</code>
+              <span>Task catalog containing the judged core pack plus the optional extended pack used for demos and inspection.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Core Benchmark Tracks</h2></div>
+      <div class="panel-body">
+        <div class="list">
+          <div class="item">
+            <strong>billing_seat_adjustment</strong>
+            <p>Resolve a real overbilling case by inspecting account and invoice records, applying the exact credit, updating ticket metadata, and sending the correct structured reply.</p>
+          </div>
+          <div class="item">
+            <strong>login_incident_triage</strong>
+            <p>Handle a VIP login issue during an active incident without resorting to unsafe account-level shortcuts.</p>
+          </div>
+          <div class="item">
+            <strong>suspicious_admin_request</strong>
+            <p>Catch a likely account-takeover scenario, inspect verification evidence, escalate to security, and refuse unsafe fulfillment.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="foot">
+      API clients and validators still receive the standard JSON health response from <code>/</code> unless they request HTML.
+      This landing page is a human-facing view layered on top of the same judged contract.
+    </div>
+  </div>
+</body>
+</html>
+"""
+
 CONSOLE_HTML = """<!doctype html>
 <html lang="en">
 <head>
@@ -1234,10 +1538,72 @@ def tasks() -> dict[str, Any]:
     }
 
 
-@app.get("/")
-def root() -> dict[str, str]:
-    """Basic 200 endpoint for Space health probes."""
+def benchmark_card_payload() -> dict[str, Any]:
+    """Return a compact public summary of the benchmark."""
 
+    fixtures = load_all_fixtures()
+    catalog = [
+        {
+            "task_id": fixture.task_id,
+            "track": task_track(fixture.task_id),
+            "difficulty": fixture.difficulty.value,
+            "max_steps": fixture.max_steps,
+        }
+        for fixture in (fixtures[task_id] for task_id in all_task_ids())
+    ]
+    core_count = sum(1 for task in catalog if task["track"] == "core")
+    extended_count = sum(1 for task in catalog if task["track"] == "extended")
+    return {
+        "name": "AegisDesk",
+        "env_name": "support_ops_env",
+        "status": "ok",
+        "summary": "Deterministic OpenEnv benchmark for B2B SaaS support operations.",
+        "task_counts": {
+            "core": core_count,
+            "extended": extended_count,
+            "total": len(catalog),
+        },
+        "features": [
+            "typed action and observation models",
+            "deterministic rubric grading",
+            "dense reward shaping with penalties",
+            "interactive console",
+            "oracle trajectory viewer",
+            "OpenAI-client baseline inference",
+        ],
+        "routes": {
+            "console": "/console",
+            "trajectory_viewer": "/trajectory-viewer",
+            "benchmark_card": "/benchmark-card",
+            "tasks": "/tasks",
+            "health": "/health",
+        },
+        "tasks": catalog,
+    }
+
+
+@app.get("/benchmark-card")
+def benchmark_card() -> dict[str, Any]:
+    """Return a machine-readable benchmark summary for judges and demos."""
+
+    return benchmark_card_payload()
+
+
+@app.get("/home", response_class=HTMLResponse)
+@app.get("/demo", response_class=HTMLResponse)
+def home() -> str:
+    """Serve the human-facing landing page."""
+
+    return LANDING_HTML
+
+
+@app.get("/", response_model=None)
+def root(request: Request) -> Any:
+    """Return JSON for validators and HTML for browser clients."""
+
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        return HTMLResponse(LANDING_HTML)
     return {"status": "ok", "env_name": "support_ops_env"}
 
 

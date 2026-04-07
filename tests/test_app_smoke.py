@@ -12,6 +12,14 @@ def test_root_healthcheck_returns_200() -> None:
     assert response.json()["env_name"] == "support_ops_env"
 
 
+def test_root_returns_html_for_browser_accept_header() -> None:
+    client = TestClient(app)
+    response = client.get("/", headers={"accept": "text/html"})
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "AegisDesk" in response.text
+
+
 def test_health_endpoint_returns_200() -> None:
     client = TestClient(app)
     response = client.get("/health")
@@ -46,6 +54,24 @@ def test_console_endpoint_returns_html() -> None:
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "AegisDesk Console" in response.text
+
+
+def test_benchmark_card_endpoint_returns_summary() -> None:
+    client = TestClient(app)
+    response = client.get("/benchmark-card")
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["name"] == "AegisDesk"
+    assert payload["task_counts"]["core"] >= 3
+    assert payload["routes"]["console"] == "/console"
+
+
+def test_home_endpoint_returns_html() -> None:
+    client = TestClient(app)
+    response = client.get("/home")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Why This Project Stands Out" in response.text
 
 
 def test_trajectory_report_endpoint_returns_scored_report() -> None:
