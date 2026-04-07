@@ -168,6 +168,48 @@ The interactive console uses the existing API and adds:
 - live observation and state panels
 - ticket and record shortcuts for faster manual exploration
 
+Quick manual verification in `/console`:
+- Task: `billing_seat_adjustment`
+- Seed: `1` or `7`
+- Click `Reset Episode`
+- Action 1:
+  `action_type=open_ticket`
+  `ticket_id=TICKET-1001`
+- Action 2:
+  `action_type=inspect_record`
+  `record_id=acct_acmecloud`
+- Action 3:
+  `action_type=inspect_record`
+  `record_id=inv_mar_4482`
+- Action 4:
+  `action_type=apply_credit`
+  `ticket_id=TICKET-1001`
+  `amount=240.0`
+  `currency=USD`
+- Action 5:
+  `action_type=add_tag`
+  `ticket_id=TICKET-1001`
+  `tag=credit-approved`
+- Action 6:
+  `action_type=set_status`
+  `ticket_id=TICKET-1001`
+  `status=resolved`
+- Action 7:
+  `action_type=draft_reply`
+  `ticket_id=TICKET-1001`
+  `template_id=billing_credit_resolution`
+  `reply_checklist=acknowledge_billing_error, confirm_credit_amount, explain_next_invoice`
+- Action 8:
+  `action_type=finalize_resolution`
+  `ticket_id=TICKET-1001`
+  `resolution_code=billing_credit_applied`
+
+You can also verify the other core tasks with these first values:
+- `login_incident_triage`:
+  `open_ticket` with `ticket_id=TICKET-2001`, then inspect `incident_auth_311`
+- `suspicious_admin_request`:
+  `open_ticket` with `ticket_id=TICKET-3001`, then inspect `approved_contacts_orbit`
+
 If you want to inspect a near-perfect trajectory step by step in the browser, open:
 
 ```text
@@ -176,6 +218,21 @@ http://127.0.0.1:7860/trajectory-viewer
 
 The trajectory viewer calls the new read-only report endpoint:
 - `/trajectory-report?task_id=<task_id>&seed=<seed>`
+
+Quick manual verification in `/trajectory-viewer`:
+- Task: `billing_seat_adjustment`
+- Seed: `7`
+- Click `Load Oracle Trajectory`
+- Expected result:
+  final score `1.0`
+  step count `8`
+  full step trace rendered on the page
+- Other good checks:
+  `login_incident_triage` with seed `7`
+  `suspicious_admin_request` with seed `7`
+  any extended-pack task from the dropdown with seed `7`
+
+If `/tasks` returns a JSON catalog with 6 tasks, including 3 `core` and 3 `extended`, then the task discovery endpoint is also working as expected.
 
 If you want to generate oracle demo runs from the CLI, use:
 
