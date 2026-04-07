@@ -238,19 +238,16 @@ Current status:
 - A PowerShell-friendly local pre-validation script now fails correctly when Docker is unavailable instead of masking the error.
 - The official pre-validation script passes locally against `https://i4mgr00t-meta.hf.space`.
 
-## [x] Phase 13: Optional publication and training extras
+## [x] Phase 13: Optional training extras
 Deliverables:
-- Add a publish-ready article draft that can be posted on Hugging Face or adapted into a public blog post.
 - Add an optional TRL + OpenEnv training starter so the benchmark can be used beyond evaluation.
 - Surface those extras in the README without changing the judged environment path.
 
 Exit criteria:
-- A reusable article draft exists in the repo.
 - A working training starter script and training notes exist in the repo.
 - The core submission wiring remains unchanged.
 
 Current status:
-- `HF_ARTICLE_DRAFT.md` now exists as a publish-ready article draft.
 - `training/README.md` and `training/train_grpo_aegisdesk.py` now exist as post-submission training extras.
 - The environment id, Space URL, validator path, and baseline submission flow remain unchanged.
 

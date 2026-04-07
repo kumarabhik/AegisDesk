@@ -57,7 +57,6 @@ Current implementation and deployment status:
 - local operator helpers now exist at `run_local_stack.py` and `env_doctor.py`
 - startup prewarming now reduces first-request latency by loading fixtures and the shared environment eagerly
 - a professional submission narrative exists at `SUBMISSION_OVERVIEW.md`
-- a publish-ready article draft now exists at `HF_ARTICLE_DRAFT.md`
 - an optional TRL starter now exists in `training/`
 - a consolidated verification report now exists at `RESULTS.md`
 - `inference.py` now emits tagged `[START]`, `[STEP]`, and `[END]` stdout lines

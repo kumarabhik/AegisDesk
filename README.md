@@ -18,7 +18,6 @@ Quick links:
 
 If you prefer a longer, blog-style explanation of what the project does, how the environment works, and how to run and verify it end to end, read `PROJECT_WALKTHROUGH.md`.
 If you want a more professional, judge-facing explanation of the benchmark's purpose and what makes it distinctive, read `SUBMISSION_OVERVIEW.md`.
-If you want a publish-ready article draft for Hugging Face or a blog platform, read `HF_ARTICLE_DRAFT.md`.
 If you want to experiment with optional TRL training after submission, read `training/README.md`.
 
 ## Why this environment exists
@@ -116,7 +115,6 @@ Key files:
 - `.env.example`
 - `PROJECT_WALKTHROUGH.md`
 - `SUBMISSION_OVERVIEW.md`
-- `HF_ARTICLE_DRAFT.md`
 - `training/README.md`
 - `training/train_grpo_aegisdesk.py`
 - `oracle_tools.py`
