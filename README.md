@@ -1,14 +1,34 @@
 ---
 title: AegisDesk
+emoji: 🛡️
+colorFrom: green
+colorTo: blue
 sdk: docker
 app_port: 7860
+base_path: /home
+fullWidth: true
+header: mini
+short_description: Deterministic OpenEnv benchmark for B2B SaaS support operations
+suggested_hardware: cpu-basic
+pinned: true
 tags:
   - openenv
+  - benchmark
+  - agents
+  - fastapi
+  - rl
 ---
 
 # AegisDesk
 
 `AegisDesk` is the public-facing name for `support_ops_env`, a real-world OpenEnv benchmark for B2B SaaS support operations. Each episode presents a small inbox of 2-3 tickets. The agent must identify the primary case, inspect the right internal records, take safe operational actions, draft a structured customer reply, and finalize the case.
+
+At a glance:
+- 3 judged core tasks with deterministic scoring in `[0.0, 1.0]`
+- 3 extended demo tasks for richer manual evaluation
+- Live browser landing page, interactive console, and oracle trajectory viewer
+- Dense reward shaping with explicit penalties for unsafe or irrelevant actions
+- Dockerized, OpenEnv-compliant, and ready for reproducible local or Space runs
 
 Quick links:
 - GitHub repo: `https://github.com/kumarabhik/AegisDesk`
