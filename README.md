@@ -8,7 +8,7 @@ app_port: 7860
 base_path: /home
 fullWidth: true
 header: mini
-short_description: Deterministic OpenEnv benchmark for B2B SaaS support operations
+short_description: OpenEnv benchmark for SaaS support operations
 suggested_hardware: cpu-basic
 pinned: true
 tags:
