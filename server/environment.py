@@ -442,6 +442,7 @@ class SupportOpsEnvironment(Environment):
             step_count=self._state.step_count,
             remaining_steps=max(self._fixture.max_steps - self._state.step_count, 0),
             last_action_error=self._state.last_action_error,
+            reply_requirements=self._fixture.reply_requirements,
             reward=reward,
             done=done,
         )

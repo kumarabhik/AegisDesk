@@ -12,6 +12,9 @@ def test_reset_returns_clean_inbox() -> None:
     assert observation.step_count == 0
     assert observation.remaining_steps == 12
     assert observation.last_action_error is None
+    assert observation.reply_requirements is not None
+    assert observation.reply_requirements.template_id == "billing_credit_resolution"
+    assert observation.reply_requirements.checklist
 
 
 def test_repeated_irrelevant_record_gets_penalized() -> None:

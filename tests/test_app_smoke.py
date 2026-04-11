@@ -34,6 +34,8 @@ def test_reset_endpoint_returns_step_payload_shape() -> None:
     assert response.status_code == 200
     assert sorted(payload.keys()) == ["done", "info", "observation", "reward"]
     assert payload["observation"]["task_brief"]
+    assert payload["observation"]["reply_requirements"]["template_id"] == "billing_credit_resolution"
+    assert payload["observation"]["reply_requirements"]["checklist"]
 
 
 def test_tasks_endpoint_returns_catalog() -> None:

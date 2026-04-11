@@ -243,6 +243,7 @@ class SupportObservation(Observation):
     step_count: int = 0
     remaining_steps: int = 0
     last_action_error: Optional[str] = None
+    reply_requirements: Optional[ReplyRequirements] = None
     reward: Optional[float] = 0.0
     done: bool = False
 

@@ -11,6 +11,7 @@ from inference import (
     DEFAULT_MODEL_NAME,
     HF_ROUTER_BASE_URL,
     SupportAction,
+    build_user_prompt,
     emit_end_log,
     emit_start_log,
     emit_step_log,
@@ -179,6 +180,32 @@ def test_emit_helpers_print_flat_lines(capsys: pytest.CaptureFixture[str]) -> No
     assert lines[2] == "[END] success=true steps=2 score=0.25 rewards=0.12,0.25"
 
 
+def test_build_user_prompt_tolerates_sparse_mock_observation() -> None:
+    prompt = build_user_prompt(
+        1,
+        SimpleNamespace(
+            task_brief="Test task",
+            inbox=[
+                SimpleNamespace(
+                    ticket_id="TICKET-1001",
+                    priority=SimpleNamespace(value="normal"),
+                    status=SimpleNamespace(value="open"),
+                    subject="Subject",
+                )
+            ],
+            active_ticket_id=None,
+            available_record_ids=[],
+            focus_panel=None,
+            last_action_error=None,
+        ),
+        [],
+    )
+
+    assert "Step 1 of" in prompt
+    assert "TICKET-1001 [normal/open] - Subject" in prompt
+    assert "Not available yet - open the primary ticket first." in prompt
+
+
 def test_run_task_emits_required_line_types(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -264,3 +291,39 @@ def test_main_emits_only_start_step_end_lines(
     main()
 
     assert capsys.readouterr().out == ""
+
+
+def test_run_task_propagates_prompt_render_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_observation = SimpleNamespace(
+        task_brief="Test task",
+        inbox=[],
+        active_ticket_id=None,
+        available_record_ids=[],
+        focus_panel=None,
+        last_action_error=None,
+    )
+
+    class FakeEnv:
+        def reset(self, task_id=None, seed=None):
+            return SimpleNamespace(observation=fake_observation)
+
+        def close(self):
+            return None
+
+    class FakeClient:
+        chat = SimpleNamespace(completions=SimpleNamespace(create=lambda **kwargs: None))
+
+    monkeypatch.setattr("inference.make_environment", lambda: FakeEnv())
+    monkeypatch.setattr("inference.make_openai_client", lambda: (FakeClient(), "test-model"))
+    monkeypatch.setattr(
+        "inference.build_user_prompt",
+        lambda step_index, observation, history: (_ for _ in ()).throw(
+            RuntimeError("prompt exploded")
+        ),
+    )
+
+    config = SimpleNamespace(api_base_url=HF_ROUTER_BASE_URL, model_name="test-model")
+    with pytest.raises(RuntimeError, match="prompt exploded"):
+        run_task("billing_seat_adjustment", 1, config)

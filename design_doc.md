@@ -60,7 +60,12 @@ Current implementation and deployment status:
 - an optional TRL starter now exists in `training/`
 - a consolidated verification report now exists at `RESULTS.md`
 - `inference.py` now emits tagged `[START]`, `[STEP]`, and `[END]` stdout lines
-- the latest captured live HF-router run reports rounded scores of `0.28`, `0.28`, and `0.25`, with a rounded mean of `0.27`
+- the latest captured live HF-router run reports rounded scores of `0.28`, `0.28`, and `0.25`, with a rounded mean of `0.27` (pre-improvement baseline)
+- `reply_requirements` is now included in `SupportObservation` so agents can see the required `template_id` and `reply_checklist` values without guessing
+- the system prompt and user prompt were rewritten with the full action schema, a six-step workflow guide, and explicit safety rules
+- the default baseline model was upgraded from `Qwen/Qwen2.5-7B-Instruct-1M` to `Qwen/Qwen2.5-72B-Instruct`
+- the post-improvement baseline should be better than the measured `0.27` mean, but a
+  fresh live run is still pending and no new mean is claimed yet
 
 Current evidence pack:
 - `RESULTS.md` captures the exact official validator output, latest latency benchmark, and latest live inference output

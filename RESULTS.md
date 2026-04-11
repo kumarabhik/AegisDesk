@@ -1,6 +1,6 @@
 # AegisDesk Results
 
-Generated on April 7, 2026.
+Generated on April 10, 2026.
 
 Project links:
 - GitHub: `https://github.com/kumarabhik/AegisDesk`
@@ -83,19 +83,11 @@ Result:
 
 ## Live Inference Baseline
 
-Command:
+### Previous baseline (Qwen2.5-7B-Instruct-1M, minimal prompt)
 
-```bash
-python inference.py
-```
-
-Model used:
-
-```text
-Qwen/Qwen2.5-7B-Instruct-1M
-```
-
-Rounded per-task scores from the latest live run:
+The initial run used a 7B model with a minimal 5-line system prompt. The agent opened
+the correct ticket and inspected one record, then looped on penalty steps because it
+lacked the action schema and reply requirements needed to complete the workflow.
 
 | Task | Score |
 | --- | ---: |
@@ -104,15 +96,40 @@ Rounded per-task scores from the latest live run:
 | `suspicious_admin_request` | `0.25` |
 | Mean | `0.27` |
 
-Observed stdout:
+### Baseline improvements (April 10, 2026)
+
+Three targeted changes were made to close the gap between achievable and observed scores:
+
+1. **`reply_requirements` added to `SupportObservation`** — the `template_id` and
+   `reply_checklist` values required by `draft_reply` are now part of the observation
+   returned by every `reset()` and `step()` call. Previously these values were held only
+   in the internal fixture and were unreachable by any agent, making ~0.10 rubric weight
+   per task effectively unscoreable without cheating.
+
+2. **System prompt rewritten** — the new prompt includes the complete action schema with
+   JSON examples, the recommended six-step workflow, and explicit safety rules.
+   A 7B model with the old prompt ran out of useful actions after step 2; the new prompt
+   teaches the model to inspect all records, apply the correct operational action, use
+   the reply requirements, and finalize.
+
+3. **Default model upgraded to `Qwen/Qwen2.5-72B-Instruct`** — the 72B model follows
+   structured instructions reliably and can extract numeric values (credit amounts,
+   priority levels) from focus panel content, which the 7B model struggled with.
+
+These changes should improve on the measured `0.27` mean baseline, but no fresh
+post-change live run is captured in this file yet. Re-run `python inference.py` with
+`HF_TOKEN` set to replace this section with measured updated scores.
+
+Command:
+
+```bash
+python inference.py
+```
+
+Model used (updated default):
 
 ```text
-[START] task=billing_seat_adjustment env=support_ops_env model=Qwen/Qwen2.5-7B-Instruct-1M
-[END] success=true steps=12 score=0.28 rewards=0.15,0.12,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03
-[START] task=login_incident_triage env=support_ops_env model=Qwen/Qwen2.5-7B-Instruct-1M
-[END] success=true steps=12 score=0.28 rewards=0.15,0.12,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03
-[START] task=suspicious_admin_request env=support_ops_env model=Qwen/Qwen2.5-7B-Instruct-1M
-[END] success=true steps=12 score=0.25 rewards=0.15,0.10,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03,-0.03
+Qwen/Qwen2.5-72B-Instruct
 ```
 
 ## Latency Benchmark
