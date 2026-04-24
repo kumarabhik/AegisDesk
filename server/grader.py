@@ -115,10 +115,12 @@ class RubricEngine:
             return 0.0, "Exact credit not yet applied"
 
         if kind == "escalation_team":
-            ticket_id = params["ticket_id"]
             expected = params["escalation_team"]
+            ticket_id = params.get("ticket_id")
             for escalation in state.escalations:
-                if escalation.ticket_id == ticket_id and escalation.escalation_team == expected:
+                team_match = escalation.escalation_team == expected
+                ticket_match = (ticket_id is None) or (escalation.ticket_id == ticket_id)
+                if team_match and ticket_match:
                     return 1.0, f"Escalated to {expected}"
             return 0.0, f"Escalation to {expected} not found"
 
@@ -136,6 +138,12 @@ class RubricEngine:
                 if actual_resolution == expected
                 else (0.0, f"Finalization code is {actual_resolution or 'unset'}")
             )
+
+        if kind == "phase_complete":
+            phase = int(params["phase"])
+            if phase in state.completed_phases:
+                return 1.0, f"Phase {phase} completed"
+            return 0.0, f"Phase {phase} not yet completed"
 
         return 0.0, f"Unknown rubric kind: {kind}"
 

@@ -1,0 +1,183 @@
+task_id: service_reinstatement_review
+difficulty: easy_medium
+task_brief: >
+  A customer account was suspended due to non-payment. The customer has now paid
+  and is requesting reinstatement. You must verify payment status, confirm the
+  account is eligible for reinstatement per the current policy window, and reactivate
+  service. The world state indicates a policy grace period is currently active,
+  which affects whether reinstatement can proceed immediately or requires approval.
+  Do not reinstate until payment is verified and the policy window is confirmed.
+primary_ticket_id: TICKET-8001
+max_steps: 12
+world_context:
+  active_incidents: []
+  policy_window:
+    name: "Q2 retention grace period"
+    description: "Suspended accounts that pay within 15 days of suspension are eligible for immediate reinstatement without approval."
+    active: true
+    affects_tasks: ["service_reinstatement_review"]
+  region: "us-east"
+  account_health_index: 0.62
+tickets:
+  - ticket_id: TICKET-8001
+    subject: "Account suspended — payment now processed, please reinstate"
+    from_contact: "Yuki Tanaka <yuki@orbitlabs.io>"
+    account_id: "acct_orbitlabs"
+    summary: >
+      Account was suspended 8 days ago for overdue payment. Customer says payment
+      was processed yesterday. Requesting immediate reinstatement and confirmation
+      that no data was lost during suspension.
+    priority: normal
+    status: open
+    tags: ["suspension", "reinstatement", "billing"]
+    allowed_actions:
+      - open_ticket
+      - inspect_record
+      - search_kb
+      - set_priority
+      - set_status
+      - add_tag
+      - escalate
+      - draft_reply
+      - finalize_resolution
+  - ticket_id: TICKET-8002
+    subject: "Can we upgrade our plan to Enterprise?"
+    from_contact: "Femi Adeyemi <femi@orbitlabs.io>"
+    account_id: "acct_orbitlabs"
+    summary: "Upgrade inquiry from same account. Not urgent while account is suspended."
+    priority: low
+    status: open
+    tags: ["upgrade", "sales"]
+    allowed_actions:
+      - open_ticket
+  - ticket_id: TICKET-8003
+    subject: "Webhook signature validation failing"
+    from_contact: "Carlos Mendes <carlos@pixelcraft.io>"
+    account_id: "acct_pixelcraft"
+    summary: "Webhook security signature failing on new endpoint. Developer support request."
+    priority: normal
+    status: open
+    tags: ["webhook", "api", "security"]
+    allowed_actions:
+      - open_ticket
+records:
+  - record_id: acct_orbitlabs
+    kind: account
+    title: "Account snapshot: OrbitLabs"
+    body: >
+      Plan: Growth Monthly. Account status: SUSPENDED (since April 15, 2026 — 8 days
+      ago). Suspension reason: unpaid invoice INV-8820 (due April 10). Payment of
+      580 USD received April 22, 2026. All data retained during suspension.
+      Billing contact Yuki Tanaka is approved.
+    related_ticket_ids: ["TICKET-8001"]
+    keywords: ["account", "suspended", "payment", "reinstatement", "orbitlabs"]
+  - record_id: inv_apr_orbitlabs
+    kind: invoice
+    title: "Invoice INV-8820 (April)"
+    body: >
+      Invoice INV-8820: 580 USD due April 10, 2026. Payment received April 22,
+      2026 (12 days late, 8 days after suspension). Payment cleared and confirmed.
+      Account balance: 0 USD outstanding.
+    related_ticket_ids: ["TICKET-8001"]
+    keywords: ["invoice", "payment", "cleared", "april", "balance"]
+  - record_id: reinstatement_policy
+    kind: contract
+    title: "Reinstatement policy: suspension and recovery"
+    body: >
+      Standard reinstatement: payment must be received within 30 days of suspension.
+      Standard cases require billing_ops approval. Exception: during the Q2 retention
+      grace period, accounts that pay within 15 days of suspension qualify for
+      immediate reinstatement without approval. OrbitLabs paid 8 days post-suspension,
+      which qualifies for the grace period exception.
+    related_ticket_ids: ["TICKET-8001"]
+    keywords: ["reinstatement", "policy", "grace", "approval", "suspension"]
+kb_articles:
+  - article_id: kb_account_reinstatement
+    title: "Account reinstatement after suspension"
+    summary: "Steps to reinstate a suspended account after payment is confirmed."
+    content: >
+      Verify payment has cleared on the account and invoice records. Check whether
+      the current policy window (world context) allows immediate reinstatement.
+      During the Q2 retention grace period, accounts paying within 15 days of
+      suspension can be reinstated immediately. Tag the ticket with 'reinstated'
+      and set status to resolved after reinstatement is confirmed.
+    keywords: ["reinstatement", "suspension", "payment", "policy", "grace"]
+rubric:
+  - check_id: select_primary
+    label: "Select the reinstatement request ticket"
+    weight: 0.10
+    kind: selected_ticket
+    params:
+      ticket_id: TICKET-8001
+  - check_id: inspect_required_records
+    label: "Inspect account and invoice to verify payment"
+    weight: 0.25
+    kind: viewed_records_all
+    params:
+      record_ids: ["acct_orbitlabs", "inv_apr_orbitlabs"]
+  - check_id: inspect_policy_record
+    label: "Inspect reinstatement policy to confirm grace period eligibility"
+    weight: 0.15
+    kind: viewed_records_all
+    params:
+      record_ids: ["reinstatement_policy"]
+  - check_id: add_reinstated_tag
+    label: "Tag ticket as reinstated"
+    weight: 0.15
+    kind: tag_added
+    params:
+      ticket_id: TICKET-8001
+      tag: "reinstated"
+  - check_id: resolve_ticket
+    label: "Mark ticket resolved"
+    weight: 0.10
+    kind: ticket_status
+    params:
+      ticket_id: TICKET-8001
+      status: "resolved"
+  - check_id: use_reply_template
+    label: "Use the reinstatement confirmation reply template"
+    weight: 0.05
+    kind: reply_template
+    params:
+      template_id: "account_reinstatement_confirmation"
+  - check_id: include_reply_items
+    label: "Include key reinstatement reply points"
+    weight: 0.15
+    kind: reply_contains
+    params:
+      checklist:
+        - "confirm_payment_received"
+        - "confirm_service_reinstated"
+        - "confirm_data_retained"
+        - "explain_next_billing_cycle"
+  - check_id: finalize_correctly
+    label: "Finalize with reinstatement resolved code"
+    weight: 0.05
+    kind: final_resolution_code
+    params:
+      resolution_code: "account_reinstated"
+forbidden_actions:
+  - action_type: escalate
+    conditions:
+      escalation_team: "billing_ops"
+    reason: "Escalation to billing_ops is unnecessary during the grace period — immediate reinstatement is authorized."
+    penalty: 0.08
+    terminal: false
+reply_requirements:
+  template_id: "account_reinstatement_confirmation"
+  checklist:
+    - "confirm_payment_received"
+    - "confirm_service_reinstated"
+    - "confirm_data_retained"
+    - "explain_next_billing_cycle"
+oracle_reference_path:
+  - "open_ticket TICKET-8001"
+  - "inspect_record acct_orbitlabs"
+  - "inspect_record inv_apr_orbitlabs"
+  - "inspect_record reinstatement_policy"
+  - "search_kb account reinstatement grace period"
+  - "add_tag reinstated"
+  - "set_status resolved"
+  - "draft_reply account_reinstatement_confirmation"
+  - "finalize_resolution account_reinstated"

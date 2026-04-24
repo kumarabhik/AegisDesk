@@ -15,7 +15,9 @@ except ImportError:
 
 class Difficulty(str, Enum):
     EASY = "easy"
+    EASY_MEDIUM = "easy_medium"
     MEDIUM = "medium"
+    MEDIUM_HARD = "medium_hard"
     HARD = "hard"
 
 
@@ -56,6 +58,53 @@ class RecordKind(str, Enum):
     APPROVED_CONTACTS = "approved_contacts"
     SECURITY_ALERT = "security_alert"
     KB_ARTICLE = "kb_article"
+
+
+class PeerMessage(BaseModel):
+    """A message injected by a peer agent (CustomerSimAgent) mid-episode."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    step: int
+    from_role: str
+    message: str
+
+
+class WorldContext(BaseModel):
+    """Compact world state surfaced in agent observations."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    active_incidents: list[str] = Field(default_factory=list)
+    policy_window_name: Optional[str] = None
+    policy_window_description: Optional[str] = None
+    policy_window_active: bool = False
+    region: str = "global"
+    account_health_index: float = 1.0
+
+
+class InvestigationPhase(BaseModel):
+    """A named phase in a long-horizon task, with associated rubric check IDs."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    phase: int
+    label: str
+    description: str = ""
+    rubric_check_ids: list[str] = Field(default_factory=list)
+
+
+class PeerInjectSpec(BaseModel):
+    """Fixture spec for a peer agent message injection."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    at_step: int
+    from_: str = Field("customer", alias="from")
+    message: str
+    inject_into_observation: bool = True
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
 
 class TicketSummary(BaseModel):
@@ -246,6 +295,9 @@ class SupportObservation(Observation):
     reply_requirements: Optional[ReplyRequirements] = None
     reward: Optional[float] = 0.0
     done: bool = False
+    peer_messages: list[PeerMessage] = Field(default_factory=list)
+    world_context: Optional[WorldContext] = None
+    current_phase: Optional[int] = None
 
 
 class SupportState(State):
@@ -268,6 +320,9 @@ class SupportState(State):
     last_action_error: Optional[str] = None
     last_reward: SupportReward = Field(default_factory=SupportReward)
     done: bool = False
+    peer_messages: list[PeerMessage] = Field(default_factory=list)
+    completed_phases: list[int] = Field(default_factory=list)
+    current_phase: Optional[int] = None
 
 
 class TicketFixture(BaseModel):
@@ -316,7 +371,7 @@ class RubricRule(BaseModel):
 
 
 class ForbiddenActionSpec(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     action_type: ActionType
     conditions: dict[str, Any] = Field(default_factory=dict)
@@ -333,7 +388,7 @@ class ReplyRequirements(BaseModel):
 
 
 class TaskFixture(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     task_id: str
     difficulty: Difficulty
@@ -347,3 +402,6 @@ class TaskFixture(BaseModel):
     forbidden_actions: list[ForbiddenActionSpec] = Field(default_factory=list)
     reply_requirements: ReplyRequirements
     oracle_reference_path: list[str] = Field(default_factory=list)
+    investigation_phases: list[InvestigationPhase] = Field(default_factory=list)
+    world_context: Optional[dict[str, Any]] = None
+    peer_inject: list[PeerInjectSpec] = Field(default_factory=list)

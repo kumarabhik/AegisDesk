@@ -1,0 +1,225 @@
+task_id: contract_renewal_negotiation
+difficulty: medium_hard
+task_brief: >
+  A key enterprise customer is up for annual renewal, but two unresolved issues are
+  blocking the renewal: an outstanding billing dispute from last quarter and an
+  unacknowledged API rate limit escalation. You must resolve both sub-cases before
+  finalizing the renewal. Resolving only one issue and finalizing early will result
+  in partial credit. The full six-step workflow must be completed for each sub-case
+  before the renewal can be closed.
+primary_ticket_id: TICKET-7001
+max_steps: 25
+investigation_phases:
+  - phase: 1
+    label: "Billing Sub-Case"
+    description: "Identify and resolve the outstanding billing dispute."
+    rubric_check_ids: ["select_primary", "inspect_billing_records", "apply_billing_credit", "add_billing_resolved_tag"]
+  - phase: 2
+    label: "API Escalation Sub-Case"
+    description: "Identify and resolve the API rate limit escalation."
+    rubric_check_ids: ["inspect_api_records", "escalate_api_issue"]
+  - phase: 3
+    label: "Renewal Finalization"
+    description: "Draft renewal communication and finalize."
+    rubric_check_ids: ["use_reply_template", "include_reply_items", "finalize_correctly"]
+tickets:
+  - ticket_id: TICKET-7001
+    subject: "Renewal review: two open issues must be resolved before we renew"
+    from_contact: "Dana Osei <dana@quantarise.io>"
+    account_id: "acct_quantarise"
+    summary: >
+      Enterprise account up for renewal next week. Customer has two open issues:
+      (1) billing discrepancy from Q1 — overcharged 360 USD on January invoice;
+      (2) API 429 errors during the March edge incident that were never acknowledged.
+      Customer will not sign renewal until both are resolved.
+    priority: high
+    status: open
+    tags: ["renewal", "billing", "api", "enterprise"]
+    allowed_actions:
+      - open_ticket
+      - inspect_record
+      - search_kb
+      - set_priority
+      - set_status
+      - add_tag
+      - apply_credit
+      - escalate
+      - draft_reply
+      - finalize_resolution
+  - ticket_id: TICKET-7002
+    subject: "Password reset not sending emails"
+    from_contact: "ops@infracore.io>"
+    account_id: "acct_infracore"
+    summary: "Transactional email for password reset not arriving. Unrelated to renewal."
+    priority: normal
+    status: open
+    tags: ["email", "auth"]
+    allowed_actions:
+      - open_ticket
+  - ticket_id: TICKET-7003
+    subject: "Request to add a third admin user"
+    from_contact: "Marko Petrov <marko@blueleaf.io>"
+    account_id: "acct_blueleaf"
+    summary: "Standard admin provisioning request. Low priority."
+    priority: low
+    status: open
+    tags: ["admin", "provisioning"]
+    allowed_actions:
+      - open_ticket
+records:
+  - record_id: acct_quantarise
+    kind: account
+    title: "Account snapshot: QuantaRise"
+    body: >
+      Plan: Enterprise Annual. MRR: 8500 USD. Renewal date: May 1, 2026. Account
+      health: at-risk (renewal pending). Two open issues flagged by customer: billing
+      dispute (Q1) and API incident acknowledgment (March). Billing contact Dana Osei
+      is approved. Account tier: strategic.
+    related_ticket_ids: ["TICKET-7001"]
+    keywords: ["account", "renewal", "enterprise", "quantarise"]
+  - record_id: inv_jan_quantarise
+    kind: invoice
+    title: "Invoice INV-7104 (January)"
+    body: >
+      January invoice billed 30 seats at 48 USD each = 1440 USD. Customer's contract
+      addendum (signed Dec 15) reduced seats from 30 to 22.5, effective Jan 1.
+      Overcharge: 7.5 seats x 48 USD = 360 USD. Eligible credit: 360 USD.
+    related_ticket_ids: ["TICKET-7001"]
+    keywords: ["invoice", "january", "credit", "overcharge", "seats"]
+  - record_id: contract_quantarise
+    kind: contract
+    title: "Contract addendum: seat reduction Jan 2026"
+    body: >
+      Signed addendum dated Dec 15, 2025: seat count reduced from 30 to 22, effective
+      Jan 1, 2026. Signed by Dana Osei. Eligible for credit on January invoice.
+    related_ticket_ids: ["TICKET-7001"]
+    keywords: ["contract", "addendum", "seats", "january", "signed"]
+  - record_id: api_incident_march
+    kind: incident
+    title: "Incident 519: Edge rate-limit regression (March)"
+    body: >
+      Incident 519 active March 12–14, 2026. Edge nodes incorrectly applied rate
+      limits to Enterprise tier accounts. QuantaRise reported 429 errors during
+      this window. Incident resolved March 14. Root cause: bad canary deployment.
+      Affected enterprise accounts entitled to incident acknowledgment reply and
+      SLA credit consideration.
+    related_ticket_ids: ["TICKET-7001"]
+    keywords: ["incident", "api", "rate-limit", "enterprise", "429"]
+  - record_id: sla_policy_quantarise
+    kind: contract
+    title: "SLA policy: Enterprise tier"
+    body: >
+      Enterprise tier SLA: 99.9% uptime guarantee. SLA breach during incident 519
+      qualifies for incident acknowledgment and service credit. Support must escalate
+      to incident_response team for formal SLA credit calculation. Do not self-approve
+      SLA credits; route to incident_response.
+    related_ticket_ids: ["TICKET-7001"]
+    keywords: ["sla", "credit", "enterprise", "incident", "escalate"]
+kb_articles:
+  - article_id: kb_renewal_blocker_resolution
+    title: "Resolving blockers before enterprise renewal"
+    summary: "How to handle multiple open issues blocking an enterprise renewal."
+    content: >
+      When a renewal is blocked by open issues, resolve each sub-case in order:
+      billing disputes first (apply credits, update tags), then operational escalations
+      (route to incident_response for SLA). Only after both sub-cases are resolved
+      should you draft the renewal summary and finalize. Premature finalization before
+      resolving all blockers results in escalation to the account team.
+    keywords: ["renewal", "blocker", "billing", "sla", "order", "enterprise"]
+rubric:
+  - check_id: select_primary
+    label: "Select the renewal blocker ticket"
+    weight: 0.08
+    kind: selected_ticket
+    params:
+      ticket_id: TICKET-7001
+  - check_id: inspect_billing_records
+    label: "Inspect account, invoice, and contract for billing sub-case"
+    weight: 0.15
+    kind: viewed_records_all
+    params:
+      record_ids: ["acct_quantarise", "inv_jan_quantarise", "contract_quantarise"]
+  - check_id: apply_billing_credit
+    label: "Apply the correct billing credit (360 USD)"
+    weight: 0.18
+    kind: exact_credit
+    params:
+      ticket_id: TICKET-7001
+      amount: 360.0
+      currency: "USD"
+  - check_id: add_billing_resolved_tag
+    label: "Tag billing sub-case resolved"
+    weight: 0.05
+    kind: tag_added
+    params:
+      ticket_id: TICKET-7001
+      tag: "billing-resolved"
+  - check_id: inspect_api_records
+    label: "Inspect API incident and SLA policy records"
+    weight: 0.15
+    kind: viewed_records_all
+    params:
+      record_ids: ["api_incident_march", "sla_policy_quantarise"]
+  - check_id: escalate_api_issue
+    label: "Escalate API/SLA sub-case to incident_response"
+    weight: 0.15
+    kind: escalation_team
+    params:
+      escalation_team: "incident_response"
+  - check_id: use_reply_template
+    label: "Use the renewal resolution reply template"
+    weight: 0.05
+    kind: reply_template
+    params:
+      template_id: "renewal_blocker_resolution"
+  - check_id: include_reply_items
+    label: "Include key renewal resolution reply points"
+    weight: 0.10
+    kind: reply_contains
+    params:
+      checklist:
+        - "confirm_billing_credit_applied"
+        - "acknowledge_api_incident"
+        - "reference_sla_escalation"
+        - "confirm_renewal_path_clear"
+  - check_id: finalize_correctly
+    label: "Finalize with renewal resolved code"
+    weight: 0.09
+    kind: final_resolution_code
+    params:
+      resolution_code: "renewal_blockers_resolved"
+forbidden_actions:
+  - action_type: finalize_resolution
+    conditions:
+      resolution_code: "renewal_blockers_resolved"
+    reason: "Cannot finalize renewal before resolving both billing dispute and API escalation."
+    penalty: 0.20
+    terminal: false
+    requires_checks_first: ["apply_billing_credit", "escalate_api_issue"]
+  - action_type: apply_credit
+    conditions:
+      amount: 720.0
+    reason: "Doubling the credit without evidence is not supported by the invoice record."
+    penalty: 0.15
+    terminal: false
+reply_requirements:
+  template_id: "renewal_blocker_resolution"
+  checklist:
+    - "confirm_billing_credit_applied"
+    - "acknowledge_api_incident"
+    - "reference_sla_escalation"
+    - "confirm_renewal_path_clear"
+oracle_reference_path:
+  - "open_ticket TICKET-7001"
+  - "inspect_record acct_quantarise"
+  - "inspect_record inv_jan_quantarise"
+  - "inspect_record contract_quantarise"
+  - "apply_credit 360 USD"
+  - "add_tag billing-resolved"
+  - "inspect_record api_incident_march"
+  - "inspect_record sla_policy_quantarise"
+  - "escalate incident_response"
+  - "add_tag api-acknowledged"
+  - "set_status pending"
+  - "draft_reply renewal_blocker_resolution"
+  - "finalize_resolution renewal_blockers_resolved"

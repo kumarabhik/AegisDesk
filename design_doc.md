@@ -12,6 +12,59 @@ The environment is designed for training and evaluating agents on tasks that res
 
 This environment aims to fill a useful benchmark gap between toy workflows and overly open-ended browser tasks by providing realistic multi-step decisions with deterministic scoring and fast reproducibility.
 
+## v2 Architecture (Round 2 — Scaler Hackathon)
+
+AegisDesk v2 extends the single-agent benchmark into a **multi-agent, self-improving platform** aligned with the Round 2 themes: Multi-Agent Interactions, Long-Horizon Planning, World Modeling, and Self-Improving Agent Systems.
+
+### v2 Components
+
+**Multi-Agent Layer** (`server/agents/`):
+- `CustomerSimAgent` — deterministic seeded agent that injects customer follow-up messages mid-episode; behavioral patterns derived from the ABCD dataset's customer dialogue taxonomy
+- `QualityReviewAgent` — async observer that scores each support decision for compliance, tone, and policy adherence; review score weighted at 15% of final rubric
+
+**WorldStateEngine** (`server/world_state.py`):
+- Tracks active incidents, policy calendar, account health scores, and regional outage map
+- Fixture-driven and deterministic (no live data)
+- Tasks reference world state via a `world_context` block in their YAML fixture
+- Grader applies world-conditional rubric checks (e.g., "do not resolve during active outage")
+- Design inspired by SGD (Schema-Guided Dialogue) domain context patterns
+
+**Long-Horizon Support**:
+- Per-task `max_steps` override in fixture YAML (default 12; long-horizon tasks use 25–30)
+- `investigation_phases` declared in fixture YAML; each phase carries a mini-rubric
+- Dense reward emits a `phase_bonus` (+0.05) when phases complete in declared order
+- `current_phase: int | None` surfaced in `SupportObservation`
+
+**Self-Improvement Pipeline** (`training/`):
+- `trajectory_harvester.py` — collects (prompt, action, score) triples; splits winners (≥0.7) vs. failures (<0.3)
+- `dpo_pair_generator.py` — generates (chosen, rejected) DPO pairs from same-task trajectory contrasts
+- `adaptive_scheduler.py` — curriculum learning: adjusts per-task training weights based on rolling score history
+- `self_improve.py` — end-to-end CLI: benchmark → harvest → DPO → fine-tune → re-evaluate → delta report
+- GRPO upgraded to `Qwen3-4B` and expanded to all 9 tasks
+
+### Dataset Sources for v2 Tasks
+| Dataset | Role |
+|---|---|
+| ABCD (10K dialogues, 55 action types) | Multi-agent and billing task fixture templates |
+| tau-bench (retail + airline, policy grading) | Long-horizon and world-modeling task patterns |
+| SGD (20-domain world-state dialogue) | WorldStateEngine context design |
+| MultiWOZ 2.4 (multi-turn, multi-intent) | Complex distractor ticket design |
+
+### v2 Task Roster (9 tasks)
+| Task | Difficulty | Theme | Max Steps |
+|---|---|---|---|
+| `billing_seat_adjustment` | Easy | Baseline | 12 |
+| `login_incident_triage` | Medium | World Modeling | 12 |
+| `suspicious_admin_request` | Hard | Baseline | 12 |
+| `customer_escalation_chain` | Medium-Hard | Multi-Agent | 15 |
+| `multi_tier_billing_dispute` | Medium | Multi-Agent | 15 |
+| `data_breach_response_lifecycle` | Hard | Long-Horizon | 30 |
+| `contract_renewal_negotiation` | Medium-Hard | Long-Horizon | 25 |
+| `service_reinstatement_review` | Easy-Medium | World Modeling | 12 |
+| `api_partner_access_audit` | Medium | World Modeling | 15 |
+
+---
+
 ## Session Handoff Summary
 Use this section to quickly restore project context if a future coding session loses prior chat history.
 

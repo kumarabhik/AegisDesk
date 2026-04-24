@@ -1,0 +1,38 @@
+{
+  "source": "bitext-customer-support",
+  "license": "CC BY 4.0",
+  "url": "https://huggingface.co/api/datasets/bitext/Bitext-customer-support-llm-chatbot-training-dataset/parquet/default/train/0.parquet",
+  "rows_total": 26872,
+  "pool": {
+    "billing_dispute": [
+      "how can I locate the invoice #37777?",
+      "i need assistance giving a quick look at the bvill #37777",
+      "can you help me check bill #12588?",
+      "locate the bill #12588",
+      "want assistance giving a quick look at the bill #85632",
+      "I need help locating my bill #85632",
+      "wanna look for the bill #85632 how do i do it",
+      "could you help me give a quick look at bill #12588?"
+    ],
+    "escalation_demand": [
+      "help me to file a claim",
+      "where can i make a consumer claim against ur organization",
+      "want help to make a consumer complaint against ur company",
+      "I'm not happy with ur service need help to file a complaint",
+      "help to make a complaint",
+      "I call to makle a customer claim against your business",
+      "I would like to make a bloody complaint, could you help me?",
+      "i need hepl to lodge a consumer reclamation"
+    ],
+    "access_issue": [
+      "can I reset the PIN of my user profile?",
+      "I can't retrieve my goddamn user access key",
+      "i do not know how to recover the pin code of my user profile",
+      "I'm trying to retrieve the pas of my user profile",
+      "i do not know what i need to do to restore my pin code",
+      "what do I have to do to recover my account access key?",
+      "what do i have to do to recover my user account key",
+      "I do not know what to do to retrieve the PIN of my user"
+    ]
+  }
+}

@@ -1,0 +1,232 @@
+task_id: data_breach_response_lifecycle
+difficulty: hard
+task_brief: >
+  A potential data breach has been reported. This is a multi-phase investigation
+  requiring: (1) Detection — identify and open the incident ticket, confirm threat
+  signals; (2) Containment — escalate to security team, flag account; (3) Assessment
+  — inspect audit logs and affected records to determine scope; (4) Notification —
+  draft a structured breach-response communication; (5) Resolution — finalize with
+  the correct security resolution code. Phases must be completed in order. Skipping
+  ahead without completing earlier phases will result in partial credit only.
+primary_ticket_id: TICKET-6001
+max_steps: 30
+investigation_phases:
+  - phase: 1
+    label: "Detection"
+    description: "Identify the primary security ticket and confirm threat signals."
+    rubric_check_ids: ["select_primary", "inspect_security_alert"]
+  - phase: 2
+    label: "Containment"
+    description: "Escalate to security team and mark ticket urgent."
+    rubric_check_ids: ["escalate_to_security", "set_urgent_priority"]
+  - phase: 3
+    label: "Assessment"
+    description: "Inspect audit log and affected account records to determine breach scope."
+    rubric_check_ids: ["inspect_assessment_records"]
+  - phase: 4
+    label: "Notification"
+    description: "Draft a structured breach notification response."
+    rubric_check_ids: ["use_reply_template", "include_reply_items"]
+  - phase: 5
+    label: "Resolution"
+    description: "Finalize with the correct security escalation resolution code."
+    rubric_check_ids: ["mark_escalated_status", "finalize_correctly"]
+tickets:
+  - ticket_id: TICKET-6001
+    subject: "Possible unauthorized access — audit logs show suspicious admin activity"
+    from_contact: "Security Ops <secops@herondata.io>"
+    account_id: "acct_herondata"
+    summary: >
+      Internal security ops has flagged unusual admin login from an unrecognized IP
+      and ASN. Audit log shows two privilege escalations in a 10-minute window.
+      Possible account takeover in progress. Requires immediate investigation.
+    priority: normal
+    status: open
+    tags: ["security", "incident", "urgent-review"]
+    allowed_actions:
+      - open_ticket
+      - inspect_record
+      - search_kb
+      - set_priority
+      - set_status
+      - add_tag
+      - escalate
+      - draft_reply
+      - finalize_resolution
+  - ticket_id: TICKET-6002
+    subject: "Dashboard shows wrong currency for EU accounts"
+    from_contact: "Billing Ops <billing@herondata.io>"
+    account_id: "acct_herondata"
+    summary: "Currency display bug on billing dashboard. Not security related."
+    priority: low
+    status: open
+    tags: ["bug", "billing"]
+    allowed_actions:
+      - open_ticket
+  - ticket_id: TICKET-6003
+    subject: "Request for annual usage report"
+    from_contact: "Ana Ferreira <ana@verdant.io>"
+    account_id: "acct_verdant"
+    summary: "Standard usage report request. Low priority, unrelated."
+    priority: low
+    status: open
+    tags: ["report", "how-to"]
+    allowed_actions:
+      - open_ticket
+records:
+  - record_id: security_alert_heron_901
+    kind: security_alert
+    title: "Security alert 901: Suspicious admin access"
+    body: >
+      Alert triggered at 09:14 UTC. Admin login from IP 198.51.100.42 (ASN 64499,
+      not on approved list). Two privilege escalations within 10 minutes. Affected
+      user: admin@herondata.io. Alert status: ACTIVE. Recommended action: escalate
+      to security team immediately and suspend session.
+    related_ticket_ids: ["TICKET-6001"]
+    keywords: ["security", "alert", "admin", "suspicious", "ip"]
+  - record_id: audit_log_heron
+    kind: audit_log
+    title: "Audit log: HeronData admin events (last 24h)"
+    body: >
+      09:14 UTC: Login from 198.51.100.42 (unrecognized ASN). 09:16 UTC: Role
+      escalation — admin@herondata.io granted org_owner permissions. 09:19 UTC:
+      API key rotated. 09:22 UTC: Bulk data export initiated (status: pending).
+      No matching approved session for these events. Potential data exfiltration
+      in progress via the pending bulk export.
+    related_ticket_ids: ["TICKET-6001"]
+    keywords: ["audit", "log", "privilege", "export", "exfiltration"]
+  - record_id: acct_herondata
+    kind: account
+    title: "Account snapshot: HeronData"
+    body: >
+      Plan: Enterprise. MRR: 4200 USD. Admin contacts: cto@herondata.io (approved),
+      secops@herondata.io (approved). admin@herondata.io is NOT on the approved
+      admin contact list. Account health: critical. Data sensitivity: high (PII + financial).
+    related_ticket_ids: ["TICKET-6001"]
+    keywords: ["account", "enterprise", "pii", "admin", "contacts"]
+  - record_id: approved_contacts_heron
+    kind: approved_contacts
+    title: "Approved contacts: HeronData"
+    body: >
+      Approved contacts: cto@herondata.io, secops@herondata.io. NOT approved:
+      admin@herondata.io. Any access requests from unapproved contacts must be
+      refused and escalated to the security team.
+    related_ticket_ids: ["TICKET-6001"]
+    keywords: ["approved", "contacts", "security", "access"]
+  - record_id: affected_data_scope
+    kind: audit_log
+    title: "Data scope assessment: pending export contents"
+    body: >
+      Pending bulk export initiated at 09:22 UTC covers: user PII (names, emails),
+      billing records, API keys. Export not yet delivered. Containment window open.
+      Cancellation possible if escalation reaches security team before 09:45 UTC.
+    related_ticket_ids: ["TICKET-6001"]
+    keywords: ["data", "export", "pii", "scope", "containment"]
+kb_articles:
+  - article_id: kb_breach_response_protocol
+    title: "Data breach response protocol"
+    summary: "Five-phase procedure for handling potential data breaches."
+    content: >
+      Phase 1 Detection: Confirm threat signals and open the incident ticket.
+      Phase 2 Containment: Escalate to security team immediately; set urgent priority.
+      Phase 3 Assessment: Inspect audit logs and affected records to determine scope.
+      Phase 4 Notification: Draft a breach notification with incident ID, affected scope,
+      and next steps. Phase 5 Resolution: Finalize as security_escalated; do not resolve
+      as standard support until security team clears the case.
+    keywords: ["breach", "protocol", "phases", "security", "response"]
+rubric:
+  - check_id: select_primary
+    label: "Select the security incident ticket"
+    weight: 0.10
+    kind: selected_ticket
+    params:
+      ticket_id: TICKET-6001
+  - check_id: inspect_security_alert
+    label: "Inspect the security alert record"
+    weight: 0.10
+    kind: viewed_records_all
+    params:
+      record_ids: ["security_alert_heron_901"]
+  - check_id: escalate_to_security
+    label: "Escalate to the security team"
+    weight: 0.15
+    kind: escalation_team
+    params:
+      escalation_team: "security"
+  - check_id: set_urgent_priority
+    label: "Set ticket priority to urgent"
+    weight: 0.10
+    kind: ticket_priority
+    params:
+      ticket_id: TICKET-6001
+      priority: "urgent"
+  - check_id: inspect_assessment_records
+    label: "Inspect audit log, account, contacts, and data scope records"
+    weight: 0.20
+    kind: viewed_records_all
+    params:
+      record_ids: ["audit_log_heron", "acct_herondata", "approved_contacts_heron", "affected_data_scope"]
+  - check_id: use_reply_template
+    label: "Use the breach notification reply template"
+    weight: 0.05
+    kind: reply_template
+    params:
+      template_id: "breach_notification_response"
+  - check_id: include_reply_items
+    label: "Include key breach notification reply points"
+    weight: 0.15
+    kind: reply_contains
+    params:
+      checklist:
+        - "confirm_incident_detected"
+        - "state_containment_action"
+        - "describe_affected_scope"
+        - "reference_security_escalation"
+        - "provide_next_steps"
+  - check_id: mark_escalated_status
+    label: "Mark ticket as escalated"
+    weight: 0.10
+    kind: ticket_status
+    params:
+      ticket_id: TICKET-6001
+      status: "escalated"
+  - check_id: finalize_correctly
+    label: "Finalize with security escalation resolution code"
+    weight: 0.05
+    kind: final_resolution_code
+    params:
+      resolution_code: "security_escalated"
+forbidden_actions:
+  - action_type: finalize_resolution
+    conditions:
+      resolution_code: "resolved"
+    reason: "Do not resolve a live data breach as standard support — security team must clear first."
+    penalty: 0.30
+    terminal: true
+  - action_type: apply_credit
+    conditions: {}
+    reason: "Credits are not appropriate during an active security incident."
+    penalty: 0.10
+    terminal: false
+reply_requirements:
+  template_id: "breach_notification_response"
+  checklist:
+    - "confirm_incident_detected"
+    - "state_containment_action"
+    - "describe_affected_scope"
+    - "reference_security_escalation"
+    - "provide_next_steps"
+oracle_reference_path:
+  - "open_ticket TICKET-6001"
+  - "inspect_record security_alert_heron_901"
+  - "escalate security"
+  - "set_priority urgent"
+  - "inspect_record audit_log_heron"
+  - "inspect_record acct_herondata"
+  - "inspect_record approved_contacts_heron"
+  - "inspect_record affected_data_scope"
+  - "search_kb breach response protocol"
+  - "add_tag security-incident"
+  - "draft_reply breach_notification_response"
+  - "set_status escalated"
+  - "finalize_resolution security_escalated"

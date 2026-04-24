@@ -20,3 +20,48 @@ That operational maturity is now backed by a checked-in evidence trail as well. 
 - Live app: `https://i4mgr00t-meta.hf.space`
 
 From a submission point of view, the strongest story this project tells is that it evaluates the kind of judgment that real operators and real agent products need. It does not reduce the problem to classification or syntax. The agent must prioritize, investigate, mutate state carefully, escalate when necessary, and communicate cleanly. Those are exactly the capabilities that become important when agents move from isolated demos into production-facing business workflows. That is why `support_ops_env` is not only a valid hackathon environment, but also a useful benchmark direction in its own right.
+
+---
+
+## Round 2 Extension — Scaler Hackathon
+
+### Problem Statement
+
+AegisDesk v2 extends the benchmark to cover all four Round 2 themes: **Multi-Agent Interactions**, **Long-Horizon Planning & Instruction Following**, **World Modeling**, and **Self-Improving Agent Systems**. The core domain — B2B SaaS support operations — is preserved because it remains one of the richest natural evaluation surfaces for real-world agent judgment.
+
+### Environment
+
+The v2 environment is an evolution of the same OpenEnv-compliant FastAPI server, now with nine fixture-backed tasks, a `WorldStateEngine` that provides dynamic operational context, multi-agent injection hooks, and long-horizon episode support. All evaluation remains deterministic — no LLM judges, no live data.
+
+### Multi-Agent Interactions
+
+Two new agents are added. The `CustomerSimAgent` injects deterministic customer follow-up messages at configured steps during an episode, simulating realistic mid-case escalations derived from the ABCD customer service dataset. The `QualityReviewAgent` scores each support decision post-step for compliance and policy adherence, contributing 15% of the dense reward signal. Two new tasks, `customer_escalation_chain` and `multi_tier_billing_dispute`, are designed around these multi-party interaction patterns.
+
+### Long-Horizon Planning & Instruction Following
+
+Episodes can now run up to 30 steps. Two new tasks require multi-phase completion. `data_breach_response_lifecycle` follows a five-phase security incident protocol — Detection, Containment, Assessment, Notification, Resolution — where phases must be completed in order. `contract_renewal_negotiation` requires resolving two independent sub-cases (a billing dispute and an API incident) before finalizing an enterprise renewal. The grader rewards each phase completion with a +0.05 bonus, making the dense reward more informative over long trajectories.
+
+### World Modeling
+
+The `WorldStateEngine` maintains a fixture-driven context for each task: active incidents, a policy window, regional state, and account health. World-modeling tasks (`service_reinstatement_review`, `api_partner_access_audit`, and the upgraded `login_incident_triage`) require agents to consult this context before acting. An agent that ignores the active policy window and self-approves an extended API grant during a legal review will trigger a terminal forbidden action — the same kind of real-world constraint that makes the environment genuinely useful for evaluation. Dataset patterns from the Schema-Guided Dialogue (SGD) corpus informed the world-state design.
+
+### Self-Improving Agent Systems
+
+The self-improvement pipeline turns the benchmark into its own training data source. After each evaluation run, the `TrajectoryHarvester` separates winning episodes (score ≥ 0.7) from failing ones (score < 0.3). The `DPOPairGenerator` creates (chosen, rejected) training pairs from the same task, where the contrast is a critical early action that separates successful from unsuccessful trajectories. The `AdaptiveDifficultyScheduler` adjusts per-task training weights in GRPO using a rolling score history — tasks where the agent is already performing well get lower weight; tasks where the agent is struggling get higher weight. The end-to-end pipeline is exposed as `training/self_improve.py`, which runs the full loop in a single command. The base model is upgraded from `Qwen3-0.6B` to `Qwen3-4B` for better instruction following across the expanded nine-task curriculum.
+
+### Dataset Sources
+
+The v2 task fixtures are not raw data ingestion — all episodes remain fixture-backed and in-memory. Instead, the ABCD and tau-bench datasets informed the design of new tasks. ABCD's 55-action customer service taxonomy shaped the multi-agent tasks. tau-bench's multi-intent retail patterns shaped the long-horizon tasks. SGD's 20-domain world-state structure informed the `WorldStateEngine` design. This approach keeps the benchmark deterministic and reproducible while grounding the task content in realistic agent behavior patterns documented in the research literature.
+
+### Evaluation Summary
+
+| Dimension | v1 | v2 |
+|---|---|---|
+| Tasks | 3 | 9 |
+| Max episode length | 12 steps | 30 steps |
+| Multi-agent | No | CustomerSimAgent + QualityReviewAgent |
+| World context | No | WorldStateEngine (fixture-driven) |
+| Phase structure | No | Up to 5 phases with completion bonuses |
+| Self-improvement | Manual GRPO only | Full harvester → DPO → GRPO pipeline |
+| Base training model | Qwen3-0.6B | Qwen3-4B |
+| Expected post-training mean | ~0.35 | ~0.55+ (3 rounds) |

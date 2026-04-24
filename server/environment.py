@@ -18,16 +18,21 @@ try:
         EscalationRecord,
         FocusPanel,
         MutationRecord,
+        PeerMessage,
         SupportAction,
         SupportObservation,
         SupportReward,
         SupportState,
         TaskFixture,
         TicketSummary,
+        WorldContext,
     )
+    from .agents.customer_sim import CustomerSimAgent
+    from .agents.quality_review import QualityReviewAgent
     from .fixtures import get_fixture, ordered_task_ids
     from .grader import RubricEngine
-    from .reward import evaluate_behavior
+    from .reward import compute_phase_bonus, evaluate_behavior
+    from .world_state import build_world_state
 except ImportError:
     from compat import Environment
     from models import (
@@ -38,16 +43,21 @@ except ImportError:
         EscalationRecord,
         FocusPanel,
         MutationRecord,
+        PeerMessage,
         SupportAction,
         SupportObservation,
         SupportReward,
         SupportState,
         TaskFixture,
         TicketSummary,
+        WorldContext,
     )
+    from server.agents.customer_sim import CustomerSimAgent
+    from server.agents.quality_review import QualityReviewAgent
     from server.fixtures import get_fixture, ordered_task_ids
     from server.grader import RubricEngine
-    from server.reward import evaluate_behavior
+    from server.reward import compute_phase_bonus, evaluate_behavior
+    from server.world_state import build_world_state
 
 
 class SupportOpsEnvironment(Environment):
@@ -70,6 +80,9 @@ class SupportOpsEnvironment(Environment):
         self._action_history: list[ActionTrace] = []
         self._last_info: dict[str, Any] = {}
         self._state = SupportState(episode_id=str(uuid4()), step_count=0)
+        self._world_state = build_world_state(None)
+        self._customer_sim: CustomerSimAgent | None = None
+        self._quality_review = QualityReviewAgent()
         self.reset(task_id=task_id, seed=seed)
 
     @property
@@ -111,6 +124,13 @@ class SupportOpsEnvironment(Environment):
         self._last_action_signature = None
         self._resolution_code = ""
         self._action_history = []
+        self._world_state = build_world_state(self._fixture.world_context)
+        self._customer_sim = CustomerSimAgent(
+            peer_inject=[p.model_dump(by_alias=True) for p in self._fixture.peer_inject],
+            seed=episode_seed,
+            scenario_category=CustomerSimAgent.scenario_for_task(self._fixture.task_id),
+        )
+        self._quality_review = QualityReviewAgent()
         self._state = SupportState(
             episode_id=episode_id or str(uuid4()),
             step_count=0,
@@ -169,6 +189,18 @@ class SupportOpsEnvironment(Environment):
 
         self._state.step_count += 1
 
+        # Inject peer message if CustomerSimAgent has one for this step.
+        if self._customer_sim is not None:
+            peer_msg = self._customer_sim.get_injection(self._state.step_count)
+            if peer_msg is not None:
+                self._state.peer_messages.append(
+                    PeerMessage(
+                        step=peer_msg.step,
+                        from_role=peer_msg.from_role,
+                        message=peer_msg.message,
+                    )
+                )
+
         behavior = evaluate_behavior(
             action=action_obj,
             fixture=self._fixture,
@@ -184,8 +216,26 @@ class SupportOpsEnvironment(Environment):
         self._state.rubric_progress = evaluation.progress
         self._state.rubric_breakdown = evaluation.breakdown
 
+        # Phase tracking — mark newly completed phases.
+        for phase in self._fixture.investigation_phases:
+            if phase.phase not in self._state.completed_phases:
+                scored = {r.check_id for r in evaluation.breakdown if r.score > 0}
+                if all(cid in scored for cid in phase.rubric_check_ids):
+                    self._state.completed_phases.append(phase.phase)
+                    self._state.current_phase = phase.phase
+
+        phase_bonus = compute_phase_bonus(self._fixture, self._state, evaluation.breakdown)
+
+        # QualityReviewAgent scores the action post-step.
+        qa_signal = self._quality_review.review(
+            step=self._state.step_count,
+            action=action_obj.model_dump(mode="python"),
+            state=self._state.model_dump(mode="python"),
+        )
+
         total_reward = round(
-            (evaluation.progress - prev_progress) + behavior.adjustment,
+            (evaluation.progress - prev_progress) + behavior.adjustment + phase_bonus
+            + (qa_signal.review_score * QualityReviewAgent.WEIGHT * 0.1),
             4,
         )
         self._state.last_reward = SupportReward(
@@ -430,6 +480,18 @@ class SupportOpsEnvironment(Environment):
             )
             for ticket in self._ticket_lookup.values()
         ]
+        world_obs = None
+        if self._world_state:
+            wc = self._world_state.to_observation_dict()
+            world_obs = WorldContext(
+                active_incidents=wc["active_incidents"],
+                policy_window_name=wc["policy_window"]["name"] if wc["policy_window"] else None,
+                policy_window_description=wc["policy_window"]["description"] if wc["policy_window"] else None,
+                policy_window_active=wc["policy_window"]["active"] if wc["policy_window"] else False,
+                region=wc["region"],
+                account_health_index=wc["account_health_index"],
+            ) if (wc["active_incidents"] or wc["policy_window"]) else None
+
         return SupportObservation(
             task_brief=self._fixture.task_brief,
             inbox=inbox,
@@ -445,4 +507,7 @@ class SupportOpsEnvironment(Environment):
             reply_requirements=self._fixture.reply_requirements,
             reward=reward,
             done=done,
+            peer_messages=list(self._state.peer_messages),
+            world_context=world_obs,
+            current_phase=self._state.current_phase,
         )

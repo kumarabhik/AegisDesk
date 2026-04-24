@@ -1,0 +1,28 @@
+{
+  "source": "abcd",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/asappresearch/abcd/master/data/abcd_sample.json",
+  "pool": {
+    "general_followup": [
+      "I've got a promo code and I want to know when they expire.",
+      "I'd like to use it to buy some hats for my cat.",
+      "Some people think it's funny to put hats on cats...I do not feel that way.",
+      "No, I just want to see how long they last for.",
+      "That's all, have a great day! Don't forget to spay or neuter your pet!"
+    ],
+    "access_issue": [],
+    "escalation_demand": [],
+    "billing_dispute": [
+      "Hi! I need to return an item, can you help me with that?",
+      "I got the wrong size.",
+      "No, I bought it in November.",
+      "What if I ask really, really nicely?",
+      "I'll look forward to hearing from them.",
+      "Thanks for trying to help.",
+      "just wanted to check on the status of a refund",
+      "how much long till it is refunded",
+      "great thanks for your help"
+    ],
+    "reinstatement_request": []
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "source": "abcd-ontology",
+  "license": "MIT",
+  "url": "https://raw.githubusercontent.com/asappresearch/abcd/master/data/ontology.json",
+  "actions": {
+    "kb_query": [
+      "verify-identity",
+      "ask-the-oracle",
+      "validate-purchase",
+      "make-password",
+      "promo-code",
+      "subscription-status"
+    ],
+    "interaction": [
+      "offer-refund",
+      "make-purchase",
+      "record-reason",
+      "enter-details",
+      "shipping-status",
+      "update-order",
+      "pull-up-account",
+      "update-account",
+      "send-link",
+      "notify-team"
+    ],
+    "faq_policy": [
+      "membership",
+      "search-faq",
+      "try-again",
+      "log-out-in",
+      "instructions",
+      "search-jeans",
+      "search-shirt",
+      "search-boots",
+      "search-jacket",
+      "search-pricing",
+      "search-timing",
+      "search-membership",
+      "search-policy",
+      "select-faq"
+    ]
+  }
+}

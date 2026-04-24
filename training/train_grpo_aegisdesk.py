@@ -58,6 +58,31 @@ TASK_PROMPTS = {
         "Work the inbox carefully. Detect the suspicious request, inspect verification "
         "and security context, refuse unsafe fulfillment, and escalate appropriately."
     ),
+    "customer_escalation_chain": (
+        "A billing dispute involves multiple billing cycles. A customer follow-up message "
+        "will arrive mid-episode with corrected figures. Handle it, escalate for approval, "
+        "and apply the correct total credit."
+    ),
+    "multi_tier_billing_dispute": (
+        "Two parties have submitted conflicting seat counts. Find the authoritative signed "
+        "document and apply the correct pro-rata credit. Do not act on verbal claims alone."
+    ),
+    "data_breach_response_lifecycle": (
+        "A potential data breach has been detected. Follow the five-phase response protocol "
+        "in order: detect, contain, assess, notify, resolve. Do not skip phases."
+    ),
+    "contract_renewal_negotiation": (
+        "An enterprise renewal is blocked by two open issues: a billing dispute and an API "
+        "incident. Resolve both sub-cases before finalizing the renewal."
+    ),
+    "service_reinstatement_review": (
+        "A suspended account has paid. Verify payment and check the policy window. If the "
+        "grace period is active, reinstate immediately without escalation."
+    ),
+    "api_partner_access_audit": (
+        "A partner wants extended API access. A legal review window is active. Audit usage, "
+        "check the contract, and route to billing_ops — do not self-approve."
+    ),
 }
 
 
@@ -338,14 +363,22 @@ def reward_func(environments, **kwargs) -> list[float]:
     return [float(getattr(env, "score", 0.0)) for env in environments]
 
 
-def build_dataset(repeat_count: int):
-    """Build a small synthetic prompt dataset that cycles through all three tasks."""
+def build_dataset(repeat_count: int, all_tasks: bool = False):
+    """Build a prompt dataset cycling through tasks with adaptive weighting support."""
 
     from datasets import Dataset
 
+    task_subset = (
+        TASK_PROMPTS
+        if all_tasks
+        else {k: v for k, v in TASK_PROMPTS.items() if k in [
+            "billing_seat_adjustment", "login_incident_triage", "suspicious_admin_request"
+        ]}
+    )
+
     rows: list[dict[str, Any]] = []
     for seed in range(1, repeat_count + 1):
-        for task_id, task_prompt in TASK_PROMPTS.items():
+        for task_id, task_prompt in task_subset.items():
             rows.append(
                 {
                     "prompt": [
@@ -365,8 +398,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--model",
-        default="Qwen/Qwen3-0.6B",
+        default="Qwen/Qwen3-4B",
         help="Base model to train with GRPO.",
+    )
+    parser.add_argument(
+        "--all-tasks",
+        action="store_true",
+        help="Train on all 9 tasks (v1 + v2). Default: 3 canonical tasks only.",
     )
     parser.add_argument(
         "--env-url",
@@ -382,7 +420,7 @@ def parse_args() -> argparse.Namespace:
         "--repeat-count",
         type=int,
         default=16,
-        help="How many times to repeat the three canonical tasks in the training dataset.",
+        help="How many times to repeat tasks in the training dataset.",
     )
     parser.add_argument(
         "--num-train-epochs",
@@ -439,7 +477,7 @@ def main() -> None:
 
     from trl import GRPOConfig, GRPOTrainer
 
-    dataset = build_dataset(args.repeat_count)
+    dataset = build_dataset(args.repeat_count, all_tasks=args.all_tasks)
     trainer = GRPOTrainer(
         model=args.model,
         train_dataset=dataset,

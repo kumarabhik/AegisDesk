@@ -281,12 +281,164 @@ Current status:
 - `RESULTS.md` now captures the latest exact official validator pass, live verification output, live inference baseline, and latency benchmark.
 - The public GitHub repo and Hugging Face Space links are now surfaced consistently across the docs.
 
+## [ ] Phase 16: Multi-Agent Interactions (Round 2 — Theme 1)
+Deliverables:
+- Add `CustomerSimAgent` that injects deterministic customer follow-up messages mid-episode.
+- Add `QualityReviewAgent` that scores support decisions for compliance, tone, and policy adherence.
+- Author 2 new multi-agent tasks: `customer_escalation_chain` and `multi_tier_billing_dispute`.
+- Extend `SupportObservation` with a `peer_messages` field for inter-agent communication.
+- Dataset source: ABCD (Action-Based Conversations Dataset) — 55 action types, policy-graded outcomes.
+
+New files:
+- `server/agents/customer_sim.py`
+- `server/agents/quality_review.py`
+- `server/task_data/customer_escalation_chain.yaml`
+- `server/task_data/multi_tier_billing_dispute.yaml`
+
+Modified files:
+- `models.py` — add `peer_messages: list[PeerMessage]` to `SupportObservation`
+- `server/environment.py` — agent orchestration hooks
+
+Exit criteria:
+- Both new tasks run end-to-end with deterministic scores.
+- `CustomerSimAgent` injects a follow-up at step 6 and the rubric rewards correct handling.
+- `QualityReviewAgent` review score feeds into dense reward at 15% weight.
+- Existing 3 tasks unaffected; all prior tests pass.
+
+## [ ] Phase 17: Long-Horizon Planning & Instruction Following (Round 2 — Theme 2)
+Deliverables:
+- Support per-task `max_steps` override in fixture schema (default 12, complex tasks 25–30).
+- Add `investigation_phases` to fixture schema; each phase has a mini-rubric with partial credit.
+- Dense reward emits a `phase_bonus` (+0.05) when phases complete in declared order.
+- Author 2 new long-horizon tasks: `data_breach_response_lifecycle` (30 steps, 5 phases) and `contract_renewal_negotiation` (25 steps, 2 sub-cases).
+- Dataset source: tau-bench (τ-bench) multi-intent retail patterns + ABCD security escalation flows.
+
+New files:
+- `server/task_data/data_breach_response_lifecycle.yaml`
+- `server/task_data/contract_renewal_negotiation.yaml`
+
+Modified files:
+- `server/fixtures.py` — parse `investigation_phases` and per-task `max_steps`
+- `server/grader.py` — add `phase_complete` rubric check kind
+- `server/reward.py` — add `phase_bonus` to dense reward
+- `models.py` — add `current_phase: int | None` to `SupportObservation`
+
+Exit criteria:
+- Oracle path on `data_breach_response_lifecycle` scores ≥ 0.85 with all 5 phases completed.
+- Skipping a phase reduces score by ≥ 0.10 vs. in-order completion.
+- `max_steps` override works without breaking existing 12-step tasks.
+
+## [ ] Phase 18: World Modeling (Round 2 — Theme 3)
+Deliverables:
+- Add `WorldStateEngine` (`server/world_state.py`) tracking: active incidents, policy calendar, account health, regional outage map — all fixture-driven and deterministic.
+- Fixture YAML gets a new `world_context` block: `active_incidents`, `policy_window`, `region`.
+- Grader reads world state for conditional rubric checks (e.g., "do not resolve during active outage").
+- Author 3 new world-modeling tasks: `service_reinstatement_review`, `api_partner_access_audit`, `consumer_account_recovery`.
+- Dataset source: SGD (Schema-Guided Dialogue) 20-domain world-state templates + tau-bench personal domain patterns.
+
+New files:
+- `server/world_state.py`
+- `server/task_data/service_reinstatement_review.yaml`
+- `server/task_data/api_partner_access_audit.yaml`
+- `server/task_data/consumer_account_recovery.yaml`
+
+Modified files:
+- `server/environment.py` — integrate `WorldStateEngine` into `reset()` and `step()`
+- `server/fixtures.py` — parse `world_context` block
+- `server/grader.py` — world-state-conditional rubric checks
+- `models.py` — add `world_context: WorldContext | None` to `SupportObservation`
+
+Exit criteria:
+- World context appears in observation for world-modeling tasks.
+- Grader correctly fails world-conditional checks when world state is violated.
+- All 3 new tasks score deterministically.
+
+## [ ] Phase 19: Self-Improving Agent System (Round 2 — Theme 4)
+Deliverables:
+- `TrajectoryHarvester` collects (prompt, action, score) triples from benchmark runs; splits into winning (≥0.7) and failing (<0.3) trajectories.
+- `DPOPairGenerator` creates (chosen, rejected) trajectory pairs from same-task wins vs. failures.
+- `AdaptiveDifficultyScheduler` adjusts per-task training weights based on rolling score history (curriculum learning).
+- `SelfImproveCLI` runs the full loop: benchmark → harvest → DPO pairs → fine-tune → re-evaluate → delta report.
+- Upgrade default GRPO base model from `Qwen3-0.6B` → `Qwen3-4B`.
+- Extend GRPO training to cover all 9 tasks (up from 3).
+
+New files:
+- `training/trajectory_harvester.py`
+- `training/dpo_pair_generator.py`
+- `training/adaptive_scheduler.py`
+- `training/self_improve.py`
+
+Modified files:
+- `training/train_grpo_aegisdesk.py` — Qwen3-4B, adaptive scheduler, all 9 tasks, trajectory logging
+- `training/README.md` — full self-improvement pipeline documentation
+
+Exit criteria:
+- `python training/self_improve.py --rounds 1 --dry-run` completes without errors.
+- Trajectory harvester produces valid JSONL with winning/failing split.
+- DPO pair generator outputs valid pairs for at least 2 tasks.
+- GRPO config loads all 9 tasks and runs 1 epoch without crash.
+
+---
+
+## Round 2 Submission Definition
+
+### Problem Statement
+AegisDesk v2 evaluates AI agents on real-world B2B SaaS support operations — a domain structured enough to score deterministically but complex enough to require genuine judgment. Agents triage competing tickets, investigate records, follow policy, communicate correctly, and avoid unsafe shortcuts across 9 tasks spanning billing, incidents, security, multi-agent coordination, long-horizon planning, and world-aware decision making.
+
+### Environment
+- OpenEnv-compliant FastAPI server with 9 fixture-backed tasks
+- Multi-agent episodes: `CustomerSimAgent` + primary support agent + `QualityReviewAgent`
+- `WorldStateEngine` provides dynamic context (incidents, policies, account health)
+- Step limits: 12 (standard), 25–30 (long-horizon tasks)
+- Docker + HF Spaces deployment at `https://i4mgr00t-meta.hf.space`
+
+### Agent Capabilities
+- 10 action types: inspection, mutation, escalation, communication, finalization
+- Structured observations: inbox, active ticket, opened records, world context, peer messages, current phase
+- Operates within per-task step limits with deterministic rubric feedback at every step
+
+### Task Roster
+| Task | Difficulty | Theme |
+|---|---|---|
+| `billing_seat_adjustment` | Easy | Baseline |
+| `login_incident_triage` | Medium | World Modeling |
+| `suspicious_admin_request` | Hard | Baseline |
+| `customer_escalation_chain` | Medium-Hard | Multi-Agent |
+| `multi_tier_billing_dispute` | Medium | Multi-Agent |
+| `data_breach_response_lifecycle` | Hard | Long-Horizon |
+| `contract_renewal_negotiation` | Medium-Hard | Long-Horizon |
+| `service_reinstatement_review` | Easy-Medium | World Modeling |
+| `api_partner_access_audit` | Medium | World Modeling |
+
+### Reward Model / Evaluation Logic
+- **Dense reward**: rubric progress delta + behavior adjustments + phase completion bonuses (+0.05/phase)
+- **Terminal score**: deterministic rubric `[0.0, 1.0]`, no LLM judge, no free-text scoring
+- **Multi-agent scoring**: QualityReviewAgent review score weighted at 15% of final
+- **Safety enforcement**: forbidden actions trigger penalties; catastrophic violations terminate episode immediately
+
+### Post-Training / Self-Improvement Strategy
+- GRPO fine-tuning on all 9 tasks with `AdaptiveDifficultyScheduler` (curriculum learning)
+- DPO pair generation from the benchmark's own trajectory data (self-supervised signal)
+- 3-round self-improvement loop: benchmark → harvest → DPO → fine-tune → re-evaluate
+- Base model: `Qwen3-4B` (strong instruction following, fits HF compute budget)
+- Recommended dataset: **ABCD + tau-bench** patterns used to author the new fixture tasks
+
+### Dataset Choice Rationale
+| Dataset | Role |
+|---|---|
+| ABCD (10K dialogues, 55 action types) | Template for multi-agent and billing task fixtures |
+| tau-bench (retail + airline, policy grading) | Template for long-horizon and world-modeling tasks |
+| SGD (20-domain world-state) | WorldStateEngine context design |
+| MultiWOZ 2.4 (multi-turn, multi-intent) | Complex distractor ticket design |
+
+---
+
 ## Cross-cutting quality gates
 These checks apply throughout the project:
 - deterministic grading only
 - no external runtime dependencies for task execution
 - no observation leakage of hidden grader truth
-- fixed task count of 3 for v1
+- task count: 3 for v1, 9 for v2
 - reward shaping remains dense but auditable
 - project stays within `vcpu=2`, `memory=8gb`, and baseline runtime under 20 minutes
 
@@ -300,6 +452,10 @@ Milestone coverage:
 - Phase 5: oracle-path and failure-path task tests
 - Phase 6: inference contract and parsing tests
 - Phase 7: Docker and validator smoke checks
+- Phase 16: multi-agent task oracle paths and CustomerSimAgent injection tests
+- Phase 17: phase_complete rubric, phase_bonus reward, long-horizon task oracle tests
+- Phase 18: WorldStateEngine fixture loading, world-conditional grader tests
+- Phase 19: trajectory harvester JSONL format, DPO pair validity tests
 
 ## Risks and mitigations
 Risk: the action schema becomes too flexible and makes grading ambiguous.
@@ -314,11 +470,19 @@ Mitigation: anchor it in explicit fixture rules, approved-contact checks, and se
 Risk: OpenEnv validator integration fails late.
 Mitigation: scaffold the standard file layout first and validate continuously.
 
+Risk: multi-agent injection breaks determinism.
+Mitigation: CustomerSimAgent uses seeded deterministic policy; no LLM required.
+
+Risk: long-horizon tasks exceed compute budget.
+Mitigation: 30-step tasks still run under 5 minutes on inference; GRPO training uses gradient accumulation.
+
 ## Definition of done
-`support_ops_env` is done when:
+`support_ops_env` v2 is done when:
 - the environment implements the full OpenEnv interface
-- all 3 tasks are present with deterministic graders
-- dense rewards reflect real progress
-- `inference.py` produces reproducible scores
+- all 9 tasks are present with deterministic graders
+- dense rewards reflect real progress including phase bonuses
+- multi-agent and world-modeling observations are wired end-to-end
+- self-improvement pipeline completes a dry-run without errors
+- `inference.py` produces reproducible scores across all 9 tasks
 - Docker builds cleanly
 - the project is ready for Hugging Face Spaces deployment

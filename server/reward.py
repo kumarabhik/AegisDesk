@@ -34,6 +34,32 @@ class BehaviorEvaluation:
     terminate: bool = False
 
 
+PHASE_BONUS = 0.05
+
+
+def compute_phase_bonus(
+    fixture: TaskFixture,
+    state: SupportState,
+    rubric_breakdown: list,
+) -> float:
+    """Return a phase_bonus if a new phase was completed in this step.
+
+    A phase is complete when all of its rubric_check_ids have score > 0.
+    Bonus applies once per phase (first completion only).
+    """
+    if not fixture.investigation_phases:
+        return 0.0
+
+    scored_checks = {r.check_id for r in rubric_breakdown if r.score > 0}
+    bonus = 0.0
+    for phase in sorted(fixture.investigation_phases, key=lambda p: p.phase):
+        if phase.phase in state.completed_phases:
+            continue
+        if all(cid in scored_checks for cid in phase.rubric_check_ids):
+            bonus += PHASE_BONUS
+    return round(bonus, 4)
+
+
 def evaluate_behavior(
     action: SupportAction,
     fixture: TaskFixture,

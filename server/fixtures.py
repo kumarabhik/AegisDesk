@@ -20,6 +20,17 @@ CANONICAL_TASK_IDS = [
     "suspicious_admin_request",
 ]
 
+V2_TASK_IDS = [
+    "customer_escalation_chain",
+    "multi_tier_billing_dispute",
+    "data_breach_response_lifecycle",
+    "contract_renewal_negotiation",
+    "service_reinstatement_review",
+    "api_partner_access_audit",
+]
+
+ALL_OFFICIAL_TASK_IDS = CANONICAL_TASK_IDS + V2_TASK_IDS
+
 
 @lru_cache(maxsize=1)
 def load_all_fixtures() -> dict[str, TaskFixture]:
@@ -64,6 +75,10 @@ def all_task_ids() -> list[str]:
 
 
 def task_track(task_id: str) -> str:
-    """Classify tasks into the judged core or the optional extended pack."""
+    """Classify tasks by track: core (v1), v2, or extended (demo)."""
 
-    return "core" if task_id in CANONICAL_TASK_IDS else "extended"
+    if task_id in CANONICAL_TASK_IDS:
+        return "core"
+    if task_id in V2_TASK_IDS:
+        return "v2"
+    return "extended"

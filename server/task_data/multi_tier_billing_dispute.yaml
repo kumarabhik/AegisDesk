@@ -1,0 +1,190 @@
+task_id: multi_tier_billing_dispute
+difficulty: medium
+task_brief: >
+  A billing dispute has been raised, but the account owner and the billing contact
+  have submitted conflicting information about the correct seat count. You must inspect
+  both records, reconcile the discrepancy, identify the authoritative source, apply
+  the correct credit, and communicate clearly. Acting on only one party's claim without
+  reconciling the discrepancy will fail the rubric.
+primary_ticket_id: TICKET-5001
+max_steps: 15
+tickets:
+  - ticket_id: TICKET-5001
+    subject: "Disputed charge: two different seat counts submitted by our team"
+    from_contact: "Chris Okafor <chris@novafin.io>"
+    account_id: "acct_novafin"
+    summary: >
+      Account owner says seats were reduced to 8. Billing contact says seats are 14.
+      The invoice billed 20. Only one of these counts is correct per the signed contract
+      addendum. Support must reconcile and apply the right credit.
+    priority: normal
+    status: open
+    tags: ["billing", "dispute", "discrepancy"]
+    allowed_actions:
+      - open_ticket
+      - inspect_record
+      - search_kb
+      - set_priority
+      - set_status
+      - add_tag
+      - apply_credit
+      - escalate
+      - draft_reply
+      - finalize_resolution
+  - ticket_id: TICKET-5002
+    subject: "Slow dashboard load times this morning"
+    from_contact: "Preethi Rajan <preethi@novafin.io>"
+    account_id: "acct_novafin"
+    summary: "Performance complaint from same account. Unrelated to billing dispute."
+    priority: low
+    status: open
+    tags: ["performance"]
+    allowed_actions:
+      - open_ticket
+  - ticket_id: TICKET-5003
+    subject: "Need API documentation for webhooks"
+    from_contact: "Lior Ben-David <lior@axelworks.io>"
+    account_id: "acct_axelworks"
+    summary: "Developer asking for webhook docs. Standard request."
+    priority: low
+    status: open
+    tags: ["docs", "api"]
+    allowed_actions:
+      - open_ticket
+records:
+  - record_id: acct_novafin
+    kind: account
+    title: "Account snapshot: NovaFin"
+    body: >
+      Plan: Business Annual. Invoice shows 20 seats billed. Account owner Chris Okafor
+      claims reduction to 8 seats effective March 15. Billing contact Sam Yoo claims
+      the reduction was to 14 seats effective March 20. Billing contact Sam Yoo is
+      approved on the account. Chris Okafor is the account owner.
+    related_ticket_ids: ["TICKET-5001"]
+    keywords: ["account", "seats", "dispute", "novafin"]
+  - record_id: contract_novafin_addendum
+    kind: contract
+    title: "Contract addendum: seat change March 2026"
+    body: >
+      Signed addendum dated March 18, 2026: seat count reduced from 20 to 14, effective
+      March 20, 2026. Signed by Sam Yoo (billing contact). Account owner Chris Okafor
+      did not sign this addendum. The addendum is the authoritative document for billing
+      purposes.
+    related_ticket_ids: ["TICKET-5001"]
+    keywords: ["contract", "addendum", "seats", "authoritative", "signed"]
+  - record_id: inv_mar_novafin
+    kind: invoice
+    title: "Invoice INV-6201 (March)"
+    body: >
+      March invoice billed 20 seats at 45 USD each = 900 USD. Per the signed addendum,
+      the correct seat count from March 20 is 14. Overcharge: 6 seats x 45 USD x
+      11 days / 31 days = 96 USD. Eligible credit: 96 USD.
+    related_ticket_ids: ["TICKET-5001"]
+    keywords: ["invoice", "march", "overcharge", "credit", "pro-rata"]
+  - record_id: billing_contacts_novafin
+    kind: approved_contacts
+    title: "Approved contacts: NovaFin"
+    body: >
+      Approved billing contact: Sam Yoo <sam@novafin.io>. Account owner: Chris Okafor
+      <chris@novafin.io>. For billing disputes, the signed contract addendum takes
+      precedence over verbal or email claims from either party.
+    related_ticket_ids: ["TICKET-5001"]
+    keywords: ["contacts", "approved", "billing", "authority"]
+kb_articles:
+  - article_id: kb_discrepancy_resolution
+    title: "Resolving conflicting seat count claims"
+    summary: "How to handle disputes where parties disagree on the correct seat count."
+    content: >
+      When two parties submit conflicting seat counts, the signed contract addendum is
+      the authoritative source. Retrieve the latest signed addendum and apply the seat
+      count and effective date stated there. Do not act on verbal or email claims alone.
+      Document the authoritative source in your reply.
+    keywords: ["discrepancy", "seats", "contract", "addendum", "authority"]
+rubric:
+  - check_id: select_primary
+    label: "Select the billing dispute ticket"
+    weight: 0.10
+    kind: selected_ticket
+    params:
+      ticket_id: TICKET-5001
+  - check_id: inspect_required_records
+    label: "Inspect account, contract addendum, and invoice"
+    weight: 0.25
+    kind: viewed_records_all
+    params:
+      record_ids: ["acct_novafin", "contract_novafin_addendum", "inv_mar_novafin"]
+  - check_id: apply_correct_credit
+    label: "Apply the correct pro-rata credit (96 USD) based on the signed addendum"
+    weight: 0.25
+    kind: exact_credit
+    params:
+      ticket_id: TICKET-5001
+      amount: 96.0
+      currency: "USD"
+  - check_id: add_dispute_resolved_tag
+    label: "Add dispute-resolved tag"
+    weight: 0.10
+    kind: tag_added
+    params:
+      ticket_id: TICKET-5001
+      tag: "dispute-resolved"
+  - check_id: resolve_ticket
+    label: "Mark ticket resolved"
+    weight: 0.10
+    kind: ticket_status
+    params:
+      ticket_id: TICKET-5001
+      status: "resolved"
+  - check_id: use_reply_template
+    label: "Use the billing dispute resolution reply template"
+    weight: 0.05
+    kind: reply_template
+    params:
+      template_id: "billing_dispute_resolution"
+  - check_id: include_reply_items
+    label: "Include key reply points for dispute reconciliation"
+    weight: 0.10
+    kind: reply_contains
+    params:
+      checklist:
+        - "cite_authoritative_document"
+        - "confirm_credit_amount"
+        - "explain_pro_rata_calculation"
+        - "explain_next_invoice"
+  - check_id: finalize_correctly
+    label: "Finalize with dispute resolved code"
+    weight: 0.05
+    kind: final_resolution_code
+    params:
+      resolution_code: "billing_dispute_resolved"
+forbidden_actions:
+  - action_type: apply_credit
+    conditions:
+      amount: 540.0
+    reason: "Applying a full-month overcharge ignores the pro-rata calculation and the contract effective date."
+    penalty: 0.15
+    terminal: false
+  - action_type: apply_credit
+    conditions:
+      amount: 270.0
+    reason: "Acting on the account owner's uncorroborated claim without checking the signed addendum."
+    penalty: 0.20
+    terminal: false
+reply_requirements:
+  template_id: "billing_dispute_resolution"
+  checklist:
+    - "cite_authoritative_document"
+    - "confirm_credit_amount"
+    - "explain_pro_rata_calculation"
+    - "explain_next_invoice"
+oracle_reference_path:
+  - "open_ticket TICKET-5001"
+  - "inspect_record acct_novafin"
+  - "inspect_record contract_novafin_addendum"
+  - "inspect_record inv_mar_novafin"
+  - "inspect_record billing_contacts_novafin"
+  - "apply_credit 96 USD"
+  - "add_tag dispute-resolved"
+  - "set_status resolved"
+  - "draft_reply billing_dispute_resolution"
+  - "finalize_resolution billing_dispute_resolved"
