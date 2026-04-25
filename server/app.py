@@ -21,14 +21,14 @@ except ImportError:
 
 try:
     from ..models import SupportAction, SupportObservation
-    from ..oracle_tools import generate_trajectory_report
+    from ..oracle_tools import generate_trajectory_report, has_oracle_plan
     from .environment import SupportOpsEnvironment
-    from .fixtures import all_task_ids, load_all_fixtures, task_track
+    from .fixtures import all_task_ids, load_all_fixtures, resolve_fixture_id, task_track
 except ImportError:
     from models import SupportAction, SupportObservation
-    from oracle_tools import generate_trajectory_report
+    from oracle_tools import generate_trajectory_report, has_oracle_plan
     from server.environment import SupportOpsEnvironment
-    from server.fixtures import all_task_ids, load_all_fixtures, task_track
+    from server.fixtures import all_task_ids, load_all_fixtures, resolve_fixture_id, task_track
 
 
 _shared_env: SupportOpsEnvironment | None = None
@@ -249,8 +249,9 @@ LANDING_HTML = """<!doctype html>
         <a class="btn secondary" href="/benchmark-card">View Benchmark Card</a>
       </div>
       <div class="chips">
-        <div class="chip">3 judged core tasks</div>
-        <div class="chip">3 extended demo tasks</div>
+        <div class="chip">30 surfaced fixtures</div>
+        <div class="chip">27 judged fixtures</div>
+        <div class="chip">3 showcase fixtures</div>
         <div class="chip">Deterministic scores in [0, 1]</div>
         <div class="chip">OpenAI-client inference path</div>
       </div>
@@ -262,8 +263,9 @@ LANDING_HTML = """<!doctype html>
         <div class="panel-body">
           <div class="metric-grid">
             <div class="metric"><strong>Core Tasks</strong><span>3</span></div>
-            <div class="metric"><strong>Extended Tasks</strong><span>3</span></div>
-            <div class="metric"><strong>Difficulty Bands</strong><span>Easy→Hard</span></div>
+            <div class="metric"><strong>Round 2 Tasks</strong><span>6</span></div>
+            <div class="metric"><strong>Held-out Generalization</strong><span>18</span></div>
+            <div class="metric"><strong>Showcase Fixtures</strong><span>3</span></div>
             <div class="metric"><strong>Scoring</strong><span>Deterministic</span></div>
           </div>
           <div class="list">
@@ -301,7 +303,7 @@ LANDING_HTML = """<!doctype html>
             </div>
             <div class="route">
               <code>/tasks</code>
-              <span>Task catalog containing the judged core pack plus the optional extended pack used for demos and inspection.</span>
+              <span>Fixture catalog containing 30 surfaced fixtures with truthful core, v2, generalization, and showcase labels plus judged/oracle metadata.</span>
             </div>
           </div>
         </div>
@@ -309,20 +311,24 @@ LANDING_HTML = """<!doctype html>
     </div>
 
     <section class="panel">
-      <div class="panel-head"><h2>Core Benchmark Tracks</h2></div>
+      <div class="panel-head"><h2>Task Catalog Highlights</h2></div>
       <div class="panel-body">
         <div class="list">
           <div class="item">
-            <strong>billing_seat_adjustment</strong>
-            <p>Resolve a real overbilling case by inspecting account and invoice records, applying the exact credit, updating ticket metadata, and sending the correct structured reply.</p>
+            <strong>Core</strong>
+            <p>`billing_seat_adjustment`, `login_incident_triage`, and `suspicious_admin_request` remain the stable baseline tasks used for direct before-versus-after comparison.</p>
           </div>
           <div class="item">
-            <strong>login_incident_triage</strong>
-            <p>Handle a VIP login issue during an active incident without resorting to unsafe account-level shortcuts.</p>
+            <strong>Round 2</strong>
+            <p>`customer_escalation_chain`, `multi_tier_billing_dispute`, `data_breach_response_lifecycle`, `contract_renewal_negotiation`, `service_reinstatement_review`, and `api_partner_access_audit` add multi-agent, long-horizon, and world-aware behavior.</p>
           </div>
           <div class="item">
-            <strong>suspicious_admin_request</strong>
-            <p>Catch a likely account-takeover scenario, inspect verification evidence, escalate to security, and refuse unsafe fulfillment.</p>
+            <strong>Held-out Generalization</strong>
+            <p>Eighteen surfaced variants now act as judged held-out fixtures, so we can train on the 9 canonical tasks and test transfer to unseen but structurally similar support cases at a more credible benchmark scale.</p>
+          </div>
+          <div class="item">
+            <strong>Showcase</strong>
+            <p>`tax_exemption_credit_review`, `api_rate_limit_escalation`, and `admin_role_transfer_verification` remain available as showcase demos and oracle-viewer examples without changing the main training story.</p>
           </div>
         </div>
       </div>
@@ -893,7 +899,7 @@ CONSOLE_HTML = """<!doctype html>
       const observation = payload?.observation || payload || {};
       latestObservation = observation;
 
-      document.getElementById("metaTask").textContent = latestState?.task_id || taskSelect.value || "-";
+      document.getElementById("metaTask").textContent = latestState?.fixture_id || latestState?.task_id || taskSelect.value || "-";
       document.getElementById("metaReward").textContent = payload?.reward ?? observation?.reward ?? "-";
       document.getElementById("metaDone").textContent = String(payload?.done ?? observation?.done ?? false);
       document.getElementById("taskBrief").value = observation.task_brief || "";
@@ -907,7 +913,7 @@ CONSOLE_HTML = """<!doctype html>
     function renderState(state) {
       latestState = state;
       document.getElementById("statePanel").textContent = toJson(state);
-      document.getElementById("metaTask").textContent = state.task_id || taskSelect.value || "-";
+      document.getElementById("metaTask").textContent = state.fixture_id || state.task_id || taskSelect.value || "-";
     }
 
     async function api(path, options = {}) {
@@ -927,8 +933,8 @@ CONSOLE_HTML = """<!doctype html>
       taskSelect.innerHTML = "";
       payload.tasks.forEach((task) => {
         const option = document.createElement("option");
-        option.value = task.task_id;
-        option.textContent = `${task.task_id} (${task.difficulty})`;
+        option.value = task.fixture_id;
+        option.textContent = `${task.fixture_id} (${task.track} / ${task.difficulty})`;
         taskSelect.appendChild(option);
       });
       setStatus("Task catalog loaded. Reset an episode to begin.");
@@ -942,7 +948,7 @@ CONSOLE_HTML = """<!doctype html>
         const payload = await api("/reset", {
           method: "POST",
           body: JSON.stringify({
-            task_id: taskSelect.value,
+            fixture_id: taskSelect.value,
             seed: Number(document.getElementById("seedInput").value || 1),
           }),
         });
@@ -1240,7 +1246,7 @@ TRAJECTORY_VIEWER_HTML = """<!doctype html>
       <div class="eyebrow">Oracle Demo Viewer</div>
       <h1>AegisDesk Trajectory Viewer</h1>
       <div class="sub">
-        Inspect the near-perfect oracle trajectory for any core or extended task. Each
+        Inspect the near-perfect oracle trajectory for any judged or showcase fixture. Each
         step shows the exact action, reward, rubric progress, penalties, and full rubric
         breakdown so judges can understand how the benchmark scores a trajectory.
       </div>
@@ -1323,7 +1329,7 @@ TRAJECTORY_VIEWER_HTML = """<!doctype html>
     }
 
     function renderSummary(report) {
-      document.getElementById("metaTask").textContent = report.task_id;
+      document.getElementById("metaTask").textContent = report.fixture_id;
       document.getElementById("metaTrack").textContent = report.track;
       document.getElementById("metaDifficulty").textContent = report.difficulty;
       document.getElementById("metaScore").textContent = report.final_score.toFixed(2);
@@ -1390,8 +1396,8 @@ TRAJECTORY_VIEWER_HTML = """<!doctype html>
       taskSelect.innerHTML = "";
       payload.tasks.forEach((task) => {
         const option = document.createElement("option");
-        option.value = task.task_id;
-        option.textContent = `${task.task_id} (${task.track} / ${task.difficulty})`;
+        option.value = task.fixture_id;
+        option.textContent = `${task.fixture_id} (${task.track} / ${task.difficulty})`;
         taskSelect.appendChild(option);
       });
       setStatus("Task catalog loaded. Choose a task and load the oracle trajectory.");
@@ -1403,7 +1409,7 @@ TRAJECTORY_VIEWER_HTML = """<!doctype html>
       try {
         setStatus("Generating oracle trajectory...", "ok");
         const seed = Number(document.getElementById("seedInput").value || 7);
-        const report = await api(`/trajectory-report?task_id=${encodeURIComponent(taskSelect.value)}&seed=${seed}`);
+        const report = await api(`/trajectory-report?fixture_id=${encodeURIComponent(taskSelect.value)}&seed=${seed}`);
         renderSummary(report);
         setStatus("Oracle trajectory loaded.");
       } catch (error) {
@@ -1427,12 +1433,14 @@ def create_environment() -> SupportOpsEnvironment:
     global _shared_env
     if _shared_env is None:
         task_id = os.getenv("DEFAULT_TASK_ID")
-        _shared_env = SupportOpsEnvironment(task_id=task_id)
+        fixture_id = os.getenv("DEFAULT_FIXTURE_ID")
+        _shared_env = SupportOpsEnvironment(task_id=task_id, fixture_id=fixture_id)
     return _shared_env
 
 
 class ResetPayload(BaseModel):
     task_id: str | None = None
+    fixture_id: str | None = None
     seed: int | None = None
 
 
@@ -1489,7 +1497,7 @@ app.add_middleware(GZipMiddleware, minimum_size=700)
 def reset(payload: ResetPayload | None = None) -> dict[str, Any]:
     env = create_environment()
     payload = payload or ResetPayload()
-    observation = env.reset(task_id=payload.task_id, seed=payload.seed)
+    observation = env.reset(task_id=payload.task_id, fixture_id=payload.fixture_id, seed=payload.seed)
     return {
         "observation": observation.model_dump(mode="json"),
         "reward": observation.reward,
@@ -1531,16 +1539,18 @@ def task_catalog_payload() -> dict[str, Any]:
     return {
         "tasks": [
             {
+                "fixture_id": fixture.fixture_id,
                 "task_id": fixture.task_id,
-                "track": task_track(fixture.task_id),
+                "track": task_track(fixture.fixture_id),
+                "judged": task_track(fixture.fixture_id) != "showcase",
                 "difficulty": fixture.difficulty.value,
                 "task_brief": fixture.task_brief,
                 "max_steps": fixture.max_steps,
                 "reply_template_id": fixture.reply_requirements.template_id,
                 "reply_checklist": fixture.reply_requirements.checklist,
-                "oracle_available": True,
+                "oracle_available": has_oracle_plan(fixture.fixture_id),
             }
-            for fixture in (fixtures[task_id] for task_id in all_task_ids())
+            for fixture in (fixtures[fixture_id] for fixture_id in all_task_ids())
         ]
     }
 
@@ -1553,10 +1563,10 @@ def tasks() -> dict[str, Any]:
 
 
 @lru_cache(maxsize=64)
-def cached_trajectory_report(task_id: str, seed: int) -> dict[str, Any]:
+def cached_trajectory_report(fixture_id: str, seed: int) -> dict[str, Any]:
     """Cache deterministic local oracle reports for faster repeat inspection."""
 
-    return generate_trajectory_report(task_id, seed=seed)
+    return generate_trajectory_report(fixture_id=fixture_id, seed=seed)
 
 
 @lru_cache(maxsize=1)
@@ -1565,7 +1575,10 @@ def benchmark_card_payload() -> dict[str, Any]:
 
     catalog = task_catalog_payload()["tasks"]
     core_count = sum(1 for task in catalog if task["track"] == "core")
-    extended_count = sum(1 for task in catalog if task["track"] == "extended")
+    v2_count = sum(1 for task in catalog if task["track"] == "v2")
+    generalization_count = sum(1 for task in catalog if task["track"] == "generalization")
+    showcase_count = sum(1 for task in catalog if task["track"] == "showcase")
+    judged_count = sum(1 for task in catalog if task["judged"])
     return {
         "name": "AegisDesk",
         "env_name": "support_ops_env",
@@ -1573,10 +1586,15 @@ def benchmark_card_payload() -> dict[str, Any]:
         "summary": "Deterministic OpenEnv benchmark for B2B SaaS support operations.",
         "task_counts": {
             "core": core_count,
-            "extended": extended_count,
-            "total": len(catalog),
+            "v2": v2_count,
+            "generalization": generalization_count,
+            "showcase": showcase_count,
+            "judged_total": judged_count,
+            "surfaced_total": len(catalog),
         },
         "features": [
+            "30 surfaced fixtures with truthful track and judged labels",
+            "27 judged fixtures spanning canonical and held-out generalization tasks",
             "typed action and observation models",
             "deterministic rubric grading",
             "dense reward shaping with penalties",
@@ -1637,11 +1655,16 @@ def console() -> str:
 
 
 @app.get("/trajectory-report", response_class=ORJSONResponse)
-def trajectory_report(task_id: str, seed: int = 7) -> dict[str, Any]:
+def trajectory_report(
+    task_id: str | None = None,
+    fixture_id: str | None = None,
+    seed: int = 7,
+) -> dict[str, Any]:
     """Return a step-by-step oracle trajectory report for one task."""
 
     try:
-        return cached_trajectory_report(task_id, seed)
+        resolved_fixture_id = resolve_fixture_id(task_id=task_id, fixture_id=fixture_id)
+        return cached_trajectory_report(resolved_fixture_id, seed)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

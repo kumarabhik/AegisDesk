@@ -1,0 +1,298 @@
+difficulty: hard
+forbidden_actions:
+- action_type: finalize_resolution
+  conditions:
+    resolution_code: resolved
+  penalty: 0.3
+  reason: Do not resolve a live data breach as standard support — security team must
+    clear first.
+  terminal: true
+- action_type: apply_credit
+  conditions: {}
+  penalty: 0.1
+  reason: Credits are not appropriate during an active security incident.
+  terminal: false
+investigation_phases:
+- description: Identify the primary security ticket and confirm threat signals.
+  label: Detection
+  phase: 1
+  rubric_check_ids:
+  - select_primary
+  - inspect_security_alert
+- description: Escalate to security team and mark ticket urgent.
+  label: Containment
+  phase: 2
+  rubric_check_ids:
+  - escalate_to_security
+  - set_urgent_priority
+- description: Inspect audit log and affected account records to determine breach
+    scope.
+  label: Assessment
+  phase: 3
+  rubric_check_ids:
+  - inspect_assessment_records
+- description: Draft a structured breach notification response.
+  label: Notification
+  phase: 4
+  rubric_check_ids:
+  - use_reply_template
+  - include_reply_items
+- description: Finalize with the correct security escalation resolution code.
+  label: Resolution
+  phase: 5
+  rubric_check_ids:
+  - mark_escalated_status
+  - finalize_correctly
+kb_articles:
+- article_id: kb_breach_response_protocol
+  content: 'Phase 1 Detection: Confirm threat signals and open the incident ticket.
+    Phase 2 Containment: Escalate to security team immediately; set urgent priority.
+    Phase 3 Assessment: Inspect audit logs and affected records to determine scope.
+    Phase 4 Notification: Draft a breach notification with incident ID, affected scope,
+    and next steps. Phase 5 Resolution: Finalize as security_escalated; do not resolve
+    as standard support until security team clears the case.
+
+    '
+  keywords:
+  - breach
+  - protocol
+  - phases
+  - security
+  - response
+  summary: Five-phase procedure for handling potential data breaches.
+  title: Data breach response protocol
+max_steps: 30
+oracle_reference_path:
+- open_ticket TICKET-7221
+- inspect_record security_alert_crestline_722
+- escalate security
+- set_priority urgent
+- inspect_record audit_log_crestline
+- inspect_record acct_crestline
+- inspect_record approved_contacts_crestline
+- inspect_record affected_data_scope
+- search_kb breach response protocol
+- add_tag security-incident
+- draft_reply breach_notification_response
+- set_status escalated
+- finalize_resolution security_escalated
+primary_ticket_id: TICKET-7221
+records:
+- body: 'Alert triggered at 14:22 UTC. Admin login from IP 192.0.2.123 (ASN 64512,
+    not on approved list). Three privilege escalations within 15 minutes. Affected
+    user: admin@crestline-tech.com. Alert status: ACTIVE. Recommended action: escalate
+    to security team immediately and suspend session.
+
+    '
+  keywords:
+  - security
+  - alert
+  - admin
+  - suspicious
+  - ip
+  kind: security_alert
+  record_id: security_alert_crestline_722
+  related_ticket_ids:
+  - TICKET-7221
+  title: 'Security alert 722: Suspicious admin activity'
+- body: '14:22 UTC: Login from 192.0.2.123 (unrecognized ASN). 14:24 UTC: Role escalation
+    — admin@crestline-tech.com granted org_owner permissions. 14:27 UTC: API key rotated.
+    14:30 UTC: Bulk data export initiated (status: pending). No matching approved
+    session for these events. Potential data exfiltration in progress via the pending
+    bulk export.
+
+    '
+  keywords:
+  - audit
+  - log
+  - privilege
+  - export
+  - exfiltration
+  kind: audit_log
+  record_id: audit_log_crestline
+  related_ticket_ids:
+  - TICKET-7221
+  title: 'Audit log: Crestline Tech admin events (last 24h)'
+- body: 'Plan: Enterprise. MRR: 5000 USD. Admin contacts: cto@crestline-tech.com (approved),
+    security@crestline-tech.com (approved). admin@crestline-tech.com is NOT on the
+    approved admin contact list. Account health: critical. Data sensitivity: high
+    (PII + financial).
+
+    '
+  keywords:
+  - account
+  - enterprise
+  - pii
+  - admin
+  - contacts
+  kind: account
+  record_id: acct_crestline
+  related_ticket_ids:
+  - TICKET-7221
+  title: 'Account snapshot: Crestline Tech'
+- body: 'Approved contacts: cto@crestline-tech.com, security@crestline-tech.com. NOT
+    approved: admin@crestline-tech.com. Any access requests from unapproved contacts
+    must be refused and escalated to the security team.
+
+    '
+  keywords:
+  - approved
+  - contacts
+  - security
+  - access
+  kind: approved_contacts
+  record_id: approved_contacts_crestline
+  related_ticket_ids:
+  - TICKET-7221
+  title: 'Approved contacts: Crestline Tech'
+- body: 'Pending bulk export initiated at 14:30 UTC covers: user PII (names, emails),
+    billing records, API keys. Export not yet delivered. Containment window open.
+    Cancellation possible if escalation reaches security team before 14:55 UTC.
+
+    '
+  keywords:
+  - data
+  - export
+  - pii
+  - scope
+  - containment
+  kind: audit_log
+  record_id: affected_data_scope
+  related_ticket_ids:
+  - TICKET-7221
+  title: 'Data scope assessment: pending export contents'
+reply_requirements:
+  checklist:
+  - confirm_incident_detected
+  - state_containment_action
+  - describe_affected_scope
+  - reference_security_escalation
+  - provide_next_steps
+  template_id: breach_notification_response
+rubric:
+- check_id: select_primary
+  kind: selected_ticket
+  label: Select the security incident ticket
+  params:
+    ticket_id: TICKET-7221
+  weight: 0.1
+- check_id: inspect_security_alert
+  kind: viewed_records_all
+  label: Inspect the security alert record
+  params:
+    record_ids:
+    - security_alert_crestline_722
+  weight: 0.1
+- check_id: escalate_to_security
+  kind: escalation_team
+  label: Escalate to the security team
+  params:
+    escalation_team: security
+  weight: 0.15
+- check_id: set_urgent_priority
+  kind: ticket_priority
+  label: Set ticket priority to urgent
+  params:
+    priority: urgent
+    ticket_id: TICKET-7221
+  weight: 0.1
+- check_id: inspect_assessment_records
+  kind: viewed_records_all
+  label: Inspect audit log, account, contacts, and data scope records
+  params:
+    record_ids:
+    - audit_log_crestline
+    - acct_crestline
+    - approved_contacts_crestline
+    - affected_data_scope
+  weight: 0.2
+- check_id: use_reply_template
+  kind: reply_template
+  label: Use the breach notification reply template
+  params:
+    template_id: breach_notification_response
+  weight: 0.05
+- check_id: include_reply_items
+  kind: reply_contains
+  label: Include key breach notification reply points
+  params:
+    checklist:
+    - confirm_incident_detected
+    - state_containment_action
+    - describe_affected_scope
+    - reference_security_escalation
+    - provide_next_steps
+  weight: 0.15
+- check_id: mark_escalated_status
+  kind: ticket_status
+  label: Mark ticket as escalated
+  params:
+    status: escalated
+    ticket_id: TICKET-7221
+  weight: 0.1
+- check_id: finalize_correctly
+  kind: final_resolution_code
+  label: Finalize with security escalation resolution code
+  params:
+    resolution_code: security_escalated
+  weight: 0.05
+task_brief: 'A potential data breach has been reported. This is a multi-phase investigation
+  requiring: (1) Detection — identify and open the incident ticket, confirm threat
+  signals; (2) Containment — escalate to security team, flag account; (3) Assessment
+  — inspect audit logs and affected records to determine scope; (4) Notification —
+  draft a structured breach-response communication; (5) Resolution — finalize with
+  the correct security resolution code. Phases must be completed in order. Skipping
+  ahead without completing earlier phases will result in partial credit only.
+
+  '
+task_id: data_breach_response_lifecycle
+tickets:
+- account_id: acct_crestline
+  allowed_actions:
+  - open_ticket
+  - inspect_record
+  - search_kb
+  - set_priority
+  - set_status
+  - add_tag
+  - escalate
+  - draft_reply
+  - finalize_resolution
+  from_contact: Security Team <security@crestline-tech.com>
+  priority: normal
+  status: open
+  subject: Suspicious activity detected in admin logs
+  summary: 'Unusual admin login from an unknown IP address and multiple privilege
+    escalations within a short time frame. Potential account compromise. Immediate
+    investigation required.
+
+    '
+  tags:
+  - security
+  - incident
+  - urgent-review
+  ticket_id: TICKET-7221
+- account_id: acct_crestline
+  allowed_actions:
+  - open_ticket
+  from_contact: Finance Department <finance@crestline-tech.com>
+  priority: low
+  status: open
+  subject: Billing dashboard showing incorrect currency
+  summary: Currency display issue on the billing dashboard. Not security related.
+  tags:
+  - bug
+  - billing
+  ticket_id: TICKET-7222
+- account_id: acct_crestline
+  allowed_actions:
+  - open_ticket
+  from_contact: Priya Nair <priya@crestline-tech.com>
+  priority: low
+  status: open
+  subject: Request for quarterly usage report
+  summary: Standard usage report request. Low priority, unrelated.
+  tags:
+  - report
+  - how-to
+  ticket_id: TICKET-7223

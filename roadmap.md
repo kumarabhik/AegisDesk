@@ -281,7 +281,7 @@ Current status:
 - `RESULTS.md` now captures the latest exact official validator pass, live verification output, live inference baseline, and latency benchmark.
 - The public GitHub repo and Hugging Face Space links are now surfaced consistently across the docs.
 
-## [ ] Phase 16: Multi-Agent Interactions (Round 2 — Theme 1)
+## [x] Phase 16: Multi-Agent Interactions (Round 2 — Theme 1)
 Deliverables:
 - Add `CustomerSimAgent` that injects deterministic customer follow-up messages mid-episode.
 - Add `QualityReviewAgent` that scores support decisions for compliance, tone, and policy adherence.
@@ -305,7 +305,15 @@ Exit criteria:
 - `QualityReviewAgent` review score feeds into dense reward at 15% weight.
 - Existing 3 tasks unaffected; all prior tests pass.
 
-## [ ] Phase 17: Long-Horizon Planning & Instruction Following (Round 2 — Theme 2)
+Current status:
+- `server/agents/customer_sim.py` and `server/agents/quality_review.py` implemented and wired into `server/environment.py`.
+- `customer_escalation_chain.yaml` and `multi_tier_billing_dispute.yaml` authored; peer injection at step 6 tested.
+- `SupportObservation`, `SupportState`, `TaskFixture`, and `models.py` extended with `PeerMessage`, `PeerInjectSpec`.
+- Utterance pools from Bitext (CC BY 4.0) and ABCD (MIT) stored in `training/data/`.
+- Dense reward formula updated: `progress_delta + behavior + phase_bonus + (qa_score × 0.1 × 0.15)`.
+- All 7 smoke tests pass. 12 fixtures load. v2 commit: `515fcb1`.
+
+## [x] Phase 17: Long-Horizon Planning & Instruction Following (Round 2 — Theme 2)
 Deliverables:
 - Support per-task `max_steps` override in fixture schema (default 12, complex tasks 25–30).
 - Add `investigation_phases` to fixture schema; each phase has a mini-rubric with partial credit.
@@ -328,19 +336,24 @@ Exit criteria:
 - Skipping a phase reduces score by ≥ 0.10 vs. in-order completion.
 - `max_steps` override works without breaking existing 12-step tasks.
 
-## [ ] Phase 18: World Modeling (Round 2 — Theme 3)
+Current status:
+- `data_breach_response_lifecycle.yaml` (5 phases, 30 steps) and `contract_renewal_negotiation.yaml` (3 phases, 25 steps) authored and loading.
+- `compute_phase_bonus()` added to `server/reward.py`; `InvestigationPhase`, `current_phase`, `completed_phases` added to models.
+- `TaskFixture.extra="ignore"` to support forward-compatible `max_steps` and `investigation_phases` fields.
+- `SupportObservation.current_phase` and `SupportState.completed_phases` wired end-to-end in `environment.py`.
+
+## [x] Phase 18: World Modeling (Round 2 — Theme 3)
 Deliverables:
 - Add `WorldStateEngine` (`server/world_state.py`) tracking: active incidents, policy calendar, account health, regional outage map — all fixture-driven and deterministic.
 - Fixture YAML gets a new `world_context` block: `active_incidents`, `policy_window`, `region`.
 - Grader reads world state for conditional rubric checks (e.g., "do not resolve during active outage").
-- Author 3 new world-modeling tasks: `service_reinstatement_review`, `api_partner_access_audit`, `consumer_account_recovery`.
+- Author 2 new world-modeling tasks: `service_reinstatement_review`, `api_partner_access_audit`.
 - Dataset source: SGD (Schema-Guided Dialogue) 20-domain world-state templates + tau-bench personal domain patterns.
 
 New files:
 - `server/world_state.py`
 - `server/task_data/service_reinstatement_review.yaml`
 - `server/task_data/api_partner_access_audit.yaml`
-- `server/task_data/consumer_account_recovery.yaml`
 
 Modified files:
 - `server/environment.py` — integrate `WorldStateEngine` into `reset()` and `step()`
@@ -351,9 +364,16 @@ Modified files:
 Exit criteria:
 - World context appears in observation for world-modeling tasks.
 - Grader correctly fails world-conditional checks when world state is violated.
-- All 3 new tasks score deterministically.
+- All new tasks score deterministically.
 
-## [ ] Phase 19: Self-Improving Agent System (Round 2 — Theme 4)
+Current status:
+- `server/world_state.py` implemented: `WorldState`, `PolicyWindow`, `build_world_state()`, `is_policy_active()`.
+- `api_partner_access_audit.yaml` has `policy_window.active: true`; terminal forbidden action fires if agent self-approves during legal review.
+- `service_reinstatement_review.yaml` reads `active_incidents` from world context before allowing reinstatement.
+- `login_incident_triage` upgraded to read `WorldState.active_incidents`.
+- `WorldContext` Pydantic model added to `models.py`; `SupportObservation.world_context` wired in `environment.py`.
+
+## [x] Phase 19: Self-Improving Agent System (Round 2 — Theme 4)
 Deliverables:
 - `TrajectoryHarvester` collects (prompt, action, score) triples from benchmark runs; splits into winning (≥0.7) and failing (<0.3) trajectories.
 - `DPOPairGenerator` creates (chosen, rejected) trajectory pairs from same-task wins vs. failures.
@@ -378,17 +398,117 @@ Exit criteria:
 - DPO pair generator outputs valid pairs for at least 2 tasks.
 - GRPO config loads all 9 tasks and runs 1 epoch without crash.
 
+Current status:
+- All four pipeline modules implemented and importable.
+- `python training/self_improve.py --rounds 1 --dry-run` passes (no GPU required).
+- `training/AegisDesk_Training.ipynb` created: install → smoke test → GRPO train → reward curves → 3-round self-improvement loop → post-training benchmark.
+- `training/data/taubench_sft.jsonl` (212K, 69 conversations), `bitext_utterance_pool.json`, `abcd_utterance_pool.json`, `abcd_action_taxonomy.json` checked in.
+- Base model upgraded to `Qwen/Qwen3-4B`. Per-task prompts in `TASK_PROMPTS` dict cover all 9 tasks.
+- Actual GRPO training pending GPU run on HF Jobs (T4-medium, ~$0.60/hr, ~2h/round).
+
+## [~] Phase 20: Fixture Dataset Expansion (Episode Variety)
+
+Deliverables:
+- LLM-driven fixture variant generator at `scripts/generate_fixtures.py`.
+- 4 variants per task → up to 45 additional episode files on top of the 9 originals.
+- Each variant shares the same `task_id`, rubric structure, and forbidden-action logic as its parent, but uses a different company, contact, amounts, and ticket IDs.
+- Generated variants load as distinct `fixture_id`s; selected held-out variants surface through `GENERALIZATION_FIXTURE_IDS` while the rest can stay private for curriculum/training.
+- Reward curves and benchmark results committed to `training/` after GPU training run.
+
+New files:
+- `scripts/generate_fixtures.py` — validates schema before writing; `--dry-run` mode; emits variant fixture files that can be surfaced or kept private
+- `training/AegisDesk_Training.ipynb` — Colab/HF Jobs notebook (install → smoke test → train → plot → self-improve)
+- `training/benchmark_results.json` — post-training per-task scores (written after training run)
+- `training/reward_curves_per_task.png`, `training/reward_curves_overall.png` — training evidence
+
+Exit criteria:
+- `python scripts/generate_fixtures.py --dry-run` completes without errors.
+- At least 20 validated variant fixtures generated and loading via `server/fixtures.py`.
+- GRPO training run completed; reward curves show improvement over v1 baseline (0.27).
+- `training/benchmark_results.json` committed with per-task post-training scores.
+
+Current status:
+- `scripts/generate_fixtures.py` exists and the fixture identity redesign is now implemented.
+- The fixture loader now keys by `fixture_id`, so variant files can coexist safely while still sharing the canonical parent `task_id`.
+- Public held-out variants are surfaced through the `generalization` pack, and non-surfaced variants can remain private for curriculum/training use.
+- `training/AegisDesk_Training.ipynb` exists and remains the intended training notebook.
+- Real training evidence is still pending a separate HF Jobs / GPU run.
+
+Remaining gap:
+- Keep the held-out judged variants out of SFT, preference tuning, harvested wins, and GRPO curriculum.
+- Convert the existing variant inventory into a completed trained-evidence story with real reward/loss plots and benchmark deltas.
+
+## [~] Phase 21: Top-100 Hardening
+
+Deliverables:
+- Normalize the surfaced task taxonomy to `core=3`, `v2=6`, `generalization=18`, `showcase=3`.
+- Make `fixture_id` first-class across the API, client, environment, and oracle tooling.
+- Ensure `/tasks`, `/benchmark-card`, and oracle tooling report truthful track, judged, and oracle metadata.
+- Expand local tests to cover the full surfaced catalog, held-out variants, and Round 2 runtime behavior.
+- Refresh the judge-facing docs and add a slide-deck asset that tells the canonical-vs-held-out story.
+- Keep the remaining gap explicit: real checked-in training evidence.
+
+Exit criteria:
+- `python -m pytest -q` passes with the updated task taxonomy, fixture identity support, and oracle coverage.
+- `openenv validate` still passes after the hardening pass.
+- `/tasks` returns 30 surfaced fixtures with unique `fixture_id`s and truthful `judged` flags.
+- `/reset` works with both canonical `task_id` and exact `fixture_id`.
+- `/trajectory-report` succeeds for all 30 surfaced fixtures.
+- README, `design_doc.md`, `RESULTS.md`, and the slide deck all report the same task counts and benchmark story.
+
+Current status:
+- Taxonomy normalized: `core=3`, `v2=6`, `generalization=18`, `showcase=3`, `surfaced_total=30`, `judged_total=27`.
+- First-class `fixture_id` support is implemented across models, fixture loading, the environment, the client, FastAPI routes, and oracle tooling.
+- Oracle coverage completed for every surfaced fixture; `oracle_demo.py` now supports `core`, `v2`, `benchmark`, `generalization`, `showcase`, and `all`.
+- `/tasks` now computes truthful `oracle_available`; `/benchmark-card` reports `core`, `v2`, `generalization`, `showcase`, `judged_total`, and `surfaced_total`.
+- Local suite expanded and now passes with 57 tests.
+- `openenv validate` still passes.
+- `python scripts/fetch_real_datasets.py` now completes and builds `support_sft.jsonl` (`15,124` rows), `support_pref.jsonl` (`7,119` rows), and `training/support_rl_manifest.json`.
+- Judge-facing docs refreshed, including `README.md`, `design_doc.md`, `RESULTS.md`, `SUBMISSION_OVERVIEW.md`, and `ROUND2_SLIDE_DECK.md`.
+- Remaining blocker: real reward/loss plots plus trained-vs-baseline evidence are still pending.
+
+## [ ] Phase 22: Strongest Submission Path
+
+Deliverables:
+1. Verify the benchmark contract with `pytest`, `openenv validate`, and oracle coverage.
+2. Verify the external dataset sources are reachable.
+3. Rebuild the SFT corpus, preference corpus, dataset report, and RL manifest.
+4. Run the training readiness doctor and save `training/readiness_report.json`.
+5. Run a real `Qwen/Qwen3-8B` SFT smoke job.
+6. Run a real `Qwen/Qwen3-8B` SFT champion job.
+7. Run a real `Qwen/Qwen3-8B` DPO champion job.
+8. Run a GRPO stabilize pass on the canonical `9` fixtures.
+9. Run a GRPO champion pass on the canonical `9` plus private curriculum variants.
+10. Evaluate baseline and champion across all `27` judged fixtures with `3` seeds, write `training/benchmark_results.json`, generate plots, and sync docs to the real numbers.
+
+Exit criteria:
+- Step `10` produces a real `training/benchmark_results.json`.
+- Step `10` also produces checked-in plots and synced docs.
+- Canonical mean improves over baseline.
+- Held-out mean improves over baseline.
+- Security-slice tasks do not regress severely.
+
+Current status:
+- Steps `1` to `4` are now executable via `training/strongest_submission.py` and `training/check_training_readiness.py`.
+- Steps `5` to `9` are scripted and mapped to concrete commands, but still require real GPU execution.
+- Step `10` reporting and plotting are implemented, but the checked-in evidence package is still pending.
+- Until Phase 22 is complete, the truthful claim remains: strong benchmark, evidence-incomplete.
+
 ---
 
 ## Round 2 Submission Definition
 
 ### Problem Statement
-AegisDesk v2 evaluates AI agents on real-world B2B SaaS support operations — a domain structured enough to score deterministically but complex enough to require genuine judgment. Agents triage competing tickets, investigate records, follow policy, communicate correctly, and avoid unsafe shortcuts across 9 tasks spanning billing, incidents, security, multi-agent coordination, long-horizon planning, and world-aware decision making.
+AegisDesk v2 evaluates AI agents on real-world B2B SaaS support operations — a domain structured enough to score deterministically but complex enough to require genuine judgment. Agents triage competing tickets, investigate records, follow policy, communicate correctly, and avoid unsafe shortcuts across a judged 27-fixture benchmark plus 3 showcase fixtures spanning billing, incidents, security, multi-agent coordination, long-horizon planning, and world-aware decision making.
 
 ### Environment
-- OpenEnv-compliant FastAPI server with 9 fixture-backed tasks
+- OpenEnv-compliant FastAPI server with 30 surfaced fixture-backed episodes
+- Official judged benchmark is 27 fixtures: `3 core + 6 v2 + 18 held-out generalization`
+- Showcase pack keeps 3 legacy demo fixtures available without counting toward the score-report benchmark
+- Canonical training pack is 9 fixtures (`3 core + 6 v2`), while the 18 held-out generalization fixtures stay excluded from training
 - Multi-agent episodes: `CustomerSimAgent` + primary support agent + `QualityReviewAgent`
 - `WorldStateEngine` provides dynamic context (incidents, policies, account health)
+- First-class `fixture_id` identity allows exact replay of canonical fixtures and held-out variants
 - Step limits: 12 (standard), 25–30 (long-horizon tasks)
 - Docker + HF Spaces deployment at `https://i4mgr00t-meta.hf.space`
 
@@ -398,17 +518,43 @@ AegisDesk v2 evaluates AI agents on real-world B2B SaaS support operations — a
 - Operates within per-task step limits with deterministic rubric feedback at every step
 
 ### Task Roster
-| Task | Difficulty | Theme |
-|---|---|---|
-| `billing_seat_adjustment` | Easy | Baseline |
-| `login_incident_triage` | Medium | World Modeling |
-| `suspicious_admin_request` | Hard | Baseline |
-| `customer_escalation_chain` | Medium-Hard | Multi-Agent |
-| `multi_tier_billing_dispute` | Medium | Multi-Agent |
-| `data_breach_response_lifecycle` | Hard | Long-Horizon |
-| `contract_renewal_negotiation` | Medium-Hard | Long-Horizon |
-| `service_reinstatement_review` | Easy-Medium | World Modeling |
-| `api_partner_access_audit` | Medium | World Modeling |
+| Pack | Count | Notes |
+|---|---:|---|
+| `core` | 3 | canonical benchmark fixtures |
+| `v2` | 6 | canonical Round 2 benchmark fixtures |
+| `generalization` | 18 | held-out judged variants used only for evaluation |
+| `showcase` | 3 | surfaced demo fixtures outside the judged benchmark |
+
+Canonical training task families:
+- `billing_seat_adjustment`
+- `login_incident_triage`
+- `suspicious_admin_request`
+- `customer_escalation_chain`
+- `multi_tier_billing_dispute`
+- `data_breach_response_lifecycle`
+- `contract_renewal_negotiation`
+- `service_reinstatement_review`
+- `api_partner_access_audit`
+
+Held-out judged variants:
+- `billing_seat_adjustment_v1`
+- `billing_seat_adjustment_v2`
+- `login_incident_triage_v1`
+- `login_incident_triage_v2`
+- `suspicious_admin_request_v1`
+- `suspicious_admin_request_v2`
+- `customer_escalation_chain_v1`
+- `customer_escalation_chain_v2`
+- `multi_tier_billing_dispute_v1`
+- `multi_tier_billing_dispute_v2`
+- `data_breach_response_lifecycle_v1`
+- `data_breach_response_lifecycle_v2`
+- `contract_renewal_negotiation_v1`
+- `contract_renewal_negotiation_v2`
+- `service_reinstatement_review_v1`
+- `service_reinstatement_review_v2`
+- `api_partner_access_audit_v1`
+- `api_partner_access_audit_v2`
 
 ### Reward Model / Evaluation Logic
 - **Dense reward**: rubric progress delta + behavior adjustments + phase completion bonuses (+0.05/phase)
@@ -417,19 +563,23 @@ AegisDesk v2 evaluates AI agents on real-world B2B SaaS support operations — a
 - **Safety enforcement**: forbidden actions trigger penalties; catastrophic violations terminate episode immediately
 
 ### Post-Training / Self-Improvement Strategy
-- GRPO fine-tuning on all 9 tasks with `AdaptiveDifficultyScheduler` (curriculum learning)
+- GRPO fine-tuning on the canonical 9-task training pack with `AdaptiveDifficultyScheduler` (curriculum learning)
 - DPO pair generation from the benchmark's own trajectory data (self-supervised signal)
 - 3-round self-improvement loop: benchmark → harvest → DPO → fine-tune → re-evaluate
-- Base model: `Qwen3-4B` (strong instruction following, fits HF compute budget)
-- Recommended dataset: **ABCD + tau-bench** patterns used to author the new fixture tasks
+- Baseline and champion evaluation both run on the full 27 judged fixtures
+- Default target model: `Qwen/Qwen3-8B`, with `Qwen/Qwen3-4B` as the fallback if HF quota is tight
+- Recommended dataset stack: Bitext + ABCD + tau-bench/tau2 + Schema-Guided Dialogue + HelpSteer2
+- Current local derived corpora: `support_sft.jsonl` with `15,124` rows and `support_pref.jsonl` with `7,119` rows
 
 ### Dataset Choice Rationale
 | Dataset | Role |
 |---|---|
-| ABCD (10K dialogues, 55 action types) | Template for multi-agent and billing task fixtures |
-| tau-bench (retail + airline, policy grading) | Template for long-horizon and world-modeling tasks |
-| SGD (20-domain world-state) | WorldStateEngine context design |
-| MultiWOZ 2.4 (multi-turn, multi-intent) | Complex distractor ticket design |
+| Bitext customer support | Support phrasing, billing/account/access paraphrases, simulator realism |
+| ABCD (10K dialogues, 55 action types) | Action-constrained support workflows and policy tension |
+| tau-bench / tau2-bench | Tool-use demonstrations and long-horizon policy structure |
+| Schema-Guided Dialogue (SGD) | World-state and schema-following context design |
+| HelpSteer2 | Preference tuning and response quality supervision |
+| DialogStudio or MultiWOZ 2.4 | Optional stretch data for more dialog variety |
 
 ---
 
@@ -438,7 +588,8 @@ These checks apply throughout the project:
 - deterministic grading only
 - no external runtime dependencies for task execution
 - no observation leakage of hidden grader truth
-- task count: 3 for v1, 9 for v2
+- task count: 30 surfaced total, with a 27-fixture judged benchmark and a 9-fixture canonical training pack
+- held-out judged variants never enter SFT, DPO/ORPO, harvested wins, or GRPO curriculum
 - reward shaping remains dense but auditable
 - project stays within `vcpu=2`, `memory=8gb`, and baseline runtime under 20 minutes
 
@@ -479,10 +630,11 @@ Mitigation: 30-step tasks still run under 5 minutes on inference; GRPO training 
 ## Definition of done
 `support_ops_env` v2 is done when:
 - the environment implements the full OpenEnv interface
-- all 9 tasks are present with deterministic graders
+- all 30 surfaced fixtures are available with deterministic graders
+- the 27 judged fixtures are benchmarked through a single machine-readable results file
 - dense rewards reflect real progress including phase bonuses
 - multi-agent and world-modeling observations are wired end-to-end
 - self-improvement pipeline completes a dry-run without errors
-- `inference.py` produces reproducible scores across all 9 tasks
+- `inference.py` produces reproducible scores across the judged benchmark
 - Docker builds cleanly
 - the project is ready for Hugging Face Spaces deployment

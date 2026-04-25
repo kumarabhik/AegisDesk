@@ -1,0 +1,241 @@
+difficulty: medium_hard
+forbidden_actions:
+- action_type: apply_credit
+  conditions:
+    amount: 280.0
+    ticket_id: TICKET-5001
+  penalty: 0.15
+  reason: Applying the original estimate after customer corrected the amount is wrong.
+  terminal: false
+- action_type: apply_credit
+  conditions:
+    ticket_id: TICKET-5001
+  penalty: 0.12
+  reason: Credit above 400 USD requires billing_ops escalation first.
+  requires_escalation_first: true
+  terminal: false
+kb_articles:
+- article_id: kb_multi_cycle_credit
+  content: 'When a seat reduction affects multiple billing cycles, calculate the overcharge
+    for each cycle separately. Total credits above 400 USD require billing_ops escalation
+    and approval before applying. Document both invoice IDs in the ticket.
+
+    '
+  keywords:
+  - credit
+  - multi-cycle
+  - billing
+  - approval
+  - invoice
+  summary: How to handle credits spanning more than one invoice cycle.
+  title: Multi-cycle billing corrections
+max_steps: 15
+oracle_reference_path:
+- open_ticket TICKET-5001
+- inspect_record acct_nexflow
+- inspect_record inv_jan_nexflow
+- inspect_record inv_feb_nexflow
+- search_kb multi-cycle credit
+- '[peer_message injected at step 6]'
+- set_priority high
+- escalate billing_ops
+- apply_credit 560 USD
+- add_tag credit-approved
+- set_status resolved
+- draft_reply multi_cycle_billing_resolution
+- finalize_resolution multi_cycle_credit_applied
+peer_inject:
+- at_step: 6
+  from: customer
+  inject_into_observation: true
+  message: 'Hi, I just checked with our finance team and the overcharge is actually
+    560 USD, not 280. There were two billing cycles affected. Can you confirm and
+    apply the correct amount?
+
+    '
+primary_ticket_id: TICKET-5001
+records:
+- body: 'Plan: Enterprise Annual. Current seat count: 7. Seat count until two months
+    ago: 15. Billing contact Priya Nair is approved. Account health: good. Two billing
+    cycles potentially affected: January and February.
+
+    '
+  keywords:
+  - account
+  - seats
+  - billing
+  - nexflow
+  kind: account
+  record_id: acct_nexflow
+  related_ticket_ids:
+  - TICKET-5001
+  title: 'Account snapshot: Nexflow Analytics'
+- body: 'January invoice billed 15 seats at 40 USD each. Overcharge for 8 seats: 320
+    USD. Seat reduction was confirmed effective Jan 1.
+
+    '
+  keywords:
+  - invoice
+  - january
+  - credit
+  - billing
+  kind: invoice
+  record_id: inv_jan_nexflow
+  related_ticket_ids:
+  - TICKET-5001
+  title: Invoice INV-6001 (January)
+- body: 'February invoice billed 15 seats at 40 USD each. Overcharge for 8 seats:
+    320 USD. System did not pick up seat reduction until March billing cycle.
+
+    '
+  keywords:
+  - invoice
+  - february
+  - credit
+  - billing
+  kind: invoice
+  record_id: inv_feb_nexflow
+  related_ticket_ids:
+  - TICKET-5001
+  title: Invoice INV-6002 (February)
+- body: 'Credits above 400 USD require secondary approval from the billing team lead
+    before issuance. Support agents must escalate to billing_ops for any credit exceeding
+    400 USD. Single-cycle corrections under 400 USD may be self-approved.
+
+    '
+  keywords:
+  - policy
+  - credit
+  - approval
+  - billing_ops
+  kind: contract
+  record_id: billing_approval_policy
+  related_ticket_ids:
+  - TICKET-5001
+  title: Billing correction approval policy
+reply_requirements:
+  checklist:
+  - acknowledge_multi_cycle_error
+  - confirm_total_credit_amount
+  - reference_approval_escalation
+  - explain_next_invoice
+  template_id: multi_cycle_billing_resolution
+rubric:
+- check_id: select_primary
+  kind: selected_ticket
+  label: Select the primary billing dispute ticket
+  params:
+    ticket_id: TICKET-5001
+  weight: 0.1
+- check_id: inspect_required_records
+  kind: viewed_records_all
+  label: Inspect account and both invoice records
+  params:
+    record_ids:
+    - acct_nexflow
+    - inv_jan_nexflow
+    - inv_feb_nexflow
+  weight: 0.2
+- check_id: handle_customer_follow_up
+  kind: ticket_priority
+  label: Reassess after customer follow-up (set high priority)
+  params:
+    priority: high
+    ticket_id: TICKET-5001
+  weight: 0.15
+- check_id: escalate_for_approval
+  kind: escalation_team
+  label: Escalate to billing_ops for high-value credit approval
+  params:
+    escalation_team: billing_ops
+  weight: 0.2
+- check_id: apply_correct_credit
+  kind: exact_credit
+  label: Apply the correct total credit (560 USD) after follow-up
+  params:
+    amount: 560.0
+    currency: USD
+    ticket_id: TICKET-5001
+  weight: 0.15
+- check_id: use_reply_template
+  kind: reply_template
+  label: Use the multi-cycle billing resolution reply template
+  params:
+    template_id: multi_cycle_billing_resolution
+  weight: 0.05
+- check_id: include_reply_items
+  kind: reply_contains
+  label: Include key reply points for multi-cycle dispute
+  params:
+    checklist:
+    - acknowledge_multi_cycle_error
+    - confirm_total_credit_amount
+    - reference_approval_escalation
+    - explain_next_invoice
+  weight: 0.1
+- check_id: finalize_correctly
+  kind: final_resolution_code
+  label: Finalize with multi-cycle resolution code
+  params:
+    resolution_code: multi_cycle_credit_applied
+  weight: 0.05
+task_brief: 'A billing dispute has been partially addressed, but the customer followed
+  up with new information that changes the case. You must handle the customer follow-up
+  message injected mid-episode, reassess priority, loop in the billing team lead for
+  secondary approval, and close the case with a verified resolution. Coordination
+  with multiple parties is required — acting unilaterally without escalation will
+  fail the rubric.
+
+  '
+task_id: customer_escalation_chain
+tickets:
+- account_id: acct_nexflow
+  allowed_actions:
+  - open_ticket
+  - inspect_record
+  - search_kb
+  - set_priority
+  - set_status
+  - add_tag
+  - apply_credit
+  - escalate
+  - draft_reply
+  - finalize_resolution
+  from_contact: Priya Nair <priya@nexflow.io>
+  priority: normal
+  status: open
+  subject: Overcharged on last two billing cycles after seat reduction
+  summary: 'Customer reports being overbilled after reducing seats from 15 to 7 two
+    months ago. Initial estimate was one cycle overcharge but finance has flagged
+    two cycles.
+
+    '
+  tags:
+  - billing
+  - seat-change
+  - dispute
+  ticket_id: TICKET-5001
+- account_id: acct_devcore
+  allowed_actions:
+  - open_ticket
+  from_contact: Sam Rivera <sam@devcore.io>
+  priority: low
+  status: open
+  subject: Need help setting up two-factor authentication
+  summary: Standard 2FA setup help request. Low priority.
+  tags:
+  - how-to
+  - security
+  ticket_id: TICKET-5002
+- account_id: acct_cloudloop
+  allowed_actions:
+  - open_ticket
+  from_contact: Nadia Singh <nadia@cloudloop.io>
+  priority: low
+  status: open
+  subject: Export download link expired
+  summary: Customer cannot download their data export. Standard support case.
+  tags:
+  - export
+  - how-to
+  ticket_id: TICKET-5003

@@ -1,0 +1,235 @@
+difficulty: medium
+forbidden_actions:
+- action_type: apply_credit
+  conditions:
+    amount: 500.0
+  penalty: 0.15
+  reason: Applying a full-month overcharge ignores the pro-rata calculation and the
+    contract effective date.
+  terminal: false
+- action_type: apply_credit
+  conditions:
+    amount: 250.0
+  penalty: 0.2
+  reason: Acting on the account owner's uncorroborated claim without checking the
+    signed addendum.
+  terminal: false
+kb_articles:
+- article_id: kb_discrepancy_resolution
+  content: 'When two parties submit conflicting seat counts, the signed contract addendum
+    is the authoritative source. Retrieve the latest signed addendum and apply the
+    seat count and effective date stated there. Do not act on verbal or email claims
+    alone. Document the authoritative source in your reply.
+
+    '
+  keywords:
+  - discrepancy
+  - seats
+  - contract
+  - addendum
+  - authority
+  summary: How to handle disputes where parties disagree on the correct seat count.
+  title: Resolving conflicting seat count claims
+max_steps: 15
+oracle_reference_path:
+- open_ticket TICKET-6001
+- inspect_record acct_vantara
+- inspect_record contract_vantara_addendum
+- inspect_record inv_apr_vantara
+- inspect_record billing_contacts_vantara
+- apply_credit 133.33 USD
+- add_tag dispute-resolved
+- set_status resolved
+- draft_reply billing_dispute_resolution
+- finalize_resolution billing_dispute_resolved
+primary_ticket_id: TICKET-6001
+records:
+- body: 'Plan: Business Annual. Invoice shows 20 seats billed. Account owner Chen
+    Wei claims reduction to 10 seats effective April 10. Billing contact Rajiv Sharma
+    claims the reduction was to 15 seats effective April 15. Billing contact Rajiv
+    Sharma is approved on the account. Chen Wei is the account owner.
+
+    '
+  keywords:
+  - account
+  - seats
+  - dispute
+  - vantara
+  kind: account
+  record_id: acct_vantara
+  related_ticket_ids:
+  - TICKET-6001
+  title: 'Account snapshot: Vantara Systems'
+- body: 'Signed addendum dated April 12, 2026: seat count reduced from 20 to 15, effective
+    April 15, 2026. Signed by Rajiv Sharma (billing contact). Account owner Chen Wei
+    did not sign this addendum. The addendum is the authoritative document for billing
+    purposes.
+
+    '
+  keywords:
+  - contract
+  - addendum
+  - seats
+  - authoritative
+  - signed
+  kind: contract
+  record_id: contract_vantara_addendum
+  related_ticket_ids:
+  - TICKET-6001
+  title: 'Contract addendum: seat change April 2026'
+- body: 'April invoice billed 20 seats at 50 USD each = 1000 USD. Per the signed addendum,
+    the correct seat count from April 15 is 15. Overcharge: 5 seats x 50 USD x 16
+    days / 30 days = 133.33 USD. Eligible credit: 133.33 USD.
+
+    '
+  keywords:
+  - invoice
+  - april
+  - overcharge
+  - credit
+  - pro-rata
+  kind: invoice
+  record_id: inv_apr_vantara
+  related_ticket_ids:
+  - TICKET-6001
+  title: Invoice INV-7201 (April)
+- body: 'Approved billing contact: Rajiv Sharma <rajiv@vantara-systems.com>. Account
+    owner: Chen Wei <chen@vantara-systems.com>. For billing disputes, the signed contract
+    addendum takes precedence over verbal or email claims from either party.
+
+    '
+  keywords:
+  - contacts
+  - approved
+  - billing
+  - authority
+  kind: approved_contacts
+  record_id: billing_contacts_vantara
+  related_ticket_ids:
+  - TICKET-6001
+  title: 'Approved contacts: Vantara Systems'
+reply_requirements:
+  checklist:
+  - cite_authoritative_document
+  - confirm_credit_amount
+  - explain_pro_rata_calculation
+  - explain_next_invoice
+  template_id: billing_dispute_resolution
+rubric:
+- check_id: select_primary
+  kind: selected_ticket
+  label: Select the billing dispute ticket
+  params:
+    ticket_id: TICKET-6001
+  weight: 0.1
+- check_id: inspect_required_records
+  kind: viewed_records_all
+  label: Inspect account, contract addendum, and invoice
+  params:
+    record_ids:
+    - acct_vantara
+    - contract_vantara_addendum
+    - inv_apr_vantara
+  weight: 0.25
+- check_id: apply_correct_credit
+  kind: exact_credit
+  label: Apply the correct pro-rata credit (133.33 USD) based on the signed addendum
+  params:
+    amount: 133.33
+    currency: USD
+    ticket_id: TICKET-6001
+  weight: 0.25
+- check_id: add_dispute_resolved_tag
+  kind: tag_added
+  label: Add dispute-resolved tag
+  params:
+    tag: dispute-resolved
+    ticket_id: TICKET-6001
+  weight: 0.1
+- check_id: resolve_ticket
+  kind: ticket_status
+  label: Mark ticket resolved
+  params:
+    status: resolved
+    ticket_id: TICKET-6001
+  weight: 0.1
+- check_id: use_reply_template
+  kind: reply_template
+  label: Use the billing dispute resolution reply template
+  params:
+    template_id: billing_dispute_resolution
+  weight: 0.05
+- check_id: include_reply_items
+  kind: reply_contains
+  label: Include key reply points for dispute reconciliation
+  params:
+    checklist:
+    - cite_authoritative_document
+    - confirm_credit_amount
+    - explain_pro_rata_calculation
+    - explain_next_invoice
+  weight: 0.1
+- check_id: finalize_correctly
+  kind: final_resolution_code
+  label: Finalize with dispute resolved code
+  params:
+    resolution_code: billing_dispute_resolved
+  weight: 0.05
+task_brief: 'A billing dispute has been raised, but the account owner and the billing
+  contact have submitted conflicting information about the correct seat count. You
+  must inspect both records, reconcile the discrepancy, identify the authoritative
+  source, apply the correct credit, and communicate clearly. Acting on only one party''s
+  claim without reconciling the discrepancy will fail the rubric.
+
+  '
+task_id: multi_tier_billing_dispute
+tickets:
+- account_id: acct_vantara
+  allowed_actions:
+  - open_ticket
+  - inspect_record
+  - search_kb
+  - set_priority
+  - set_status
+  - add_tag
+  - apply_credit
+  - escalate
+  - draft_reply
+  - finalize_resolution
+  from_contact: Chen Wei <chen@vantara-systems.com>
+  priority: normal
+  status: open
+  subject: 'Disputed charge: conflicting seat counts reported by our team'
+  summary: 'Account owner says seats were reduced to 10. Billing contact says seats
+    are 15. The invoice billed 20. Only one of these counts is correct per the signed
+    contract addendum. Support must reconcile and apply the right credit.
+
+    '
+  tags:
+  - billing
+  - dispute
+  - discrepancy
+  ticket_id: TICKET-6001
+- account_id: acct_vantara
+  allowed_actions:
+  - open_ticket
+  from_contact: Aisha Patel <aisha@vantara-systems.com>
+  priority: low
+  status: open
+  subject: Slow dashboard load times this morning
+  summary: Performance complaint from same account. Unrelated to billing dispute.
+  tags:
+  - performance
+  ticket_id: TICKET-6002
+- account_id: acct_axelworks
+  allowed_actions:
+  - open_ticket
+  from_contact: Lior Ben-David <lior@axelworks.io>
+  priority: low
+  status: open
+  subject: Need API documentation for webhooks
+  summary: Developer asking for webhook docs. Standard request.
+  tags:
+  - docs
+  - api
+  ticket_id: TICKET-6003

@@ -31,7 +31,7 @@ try:
     from .agents.quality_review import QualityReviewAgent
     from .fixtures import get_fixture, ordered_task_ids
     from .grader import RubricEngine
-    from .reward import compute_phase_bonus, evaluate_behavior
+    from .reward import compute_phase_bonus, evaluate_behavior, identify_newly_completed_phases
     from .world_state import build_world_state
 except ImportError:
     from compat import Environment
@@ -56,7 +56,7 @@ except ImportError:
     from server.agents.quality_review import QualityReviewAgent
     from server.fixtures import get_fixture, ordered_task_ids
     from server.grader import RubricEngine
-    from server.reward import compute_phase_bonus, evaluate_behavior
+    from server.reward import compute_phase_bonus, evaluate_behavior, identify_newly_completed_phases
     from server.world_state import build_world_state
 
 
@@ -65,9 +65,15 @@ class SupportOpsEnvironment(Environment):
 
     _task_pointer = 0
 
-    def __init__(self, task_id: Optional[str] = None, seed: Optional[int] = None):
+    def __init__(
+        self,
+        task_id: Optional[str] = None,
+        fixture_id: Optional[str] = None,
+        seed: Optional[int] = None,
+    ):
         super().__init__()
         self._configured_task_id = task_id
+        self._configured_fixture_id = fixture_id
         self._configured_seed = seed or 0
         self._grader = RubricEngine()
         self._fixture: TaskFixture | None = None
@@ -83,7 +89,7 @@ class SupportOpsEnvironment(Environment):
         self._world_state = build_world_state(None)
         self._customer_sim: CustomerSimAgent | None = None
         self._quality_review = QualityReviewAgent()
-        self.reset(task_id=task_id, seed=seed)
+        self.reset(task_id=task_id, fixture_id=fixture_id, seed=seed)
 
     @property
     def state(self) -> SupportState:
@@ -102,11 +108,12 @@ class SupportOpsEnvironment(Environment):
         seed: Optional[int] = None,
         episode_id: Optional[str] = None,
         task_id: Optional[str] = None,
+        fixture_id: Optional[str] = None,
         **kwargs: Any,
     ) -> SupportObservation:
         """Reset the environment to a fresh episode."""
 
-        task_to_load = task_id or self._configured_task_id or self._next_task_id()
+        task_to_load = fixture_id or self._configured_fixture_id or task_id or self._configured_task_id or self._next_task_id()
         episode_seed = self._configured_seed if seed is None else seed or 0
         self._fixture = get_fixture(task_to_load)
         self._ticket_lookup = {
@@ -133,6 +140,7 @@ class SupportOpsEnvironment(Environment):
         self._quality_review = QualityReviewAgent()
         self._state = SupportState(
             episode_id=episode_id or str(uuid4()),
+            fixture_id=self._fixture.fixture_id,
             step_count=0,
             task_id=self._fixture.task_id,
             seed=episode_seed,
@@ -147,6 +155,7 @@ class SupportOpsEnvironment(Environment):
         self._state.last_reward = SupportReward(score=evaluation.progress)
         observation = self._build_observation(reward=0.0, done=False)
         self._last_info = {
+            "fixture_id": self._fixture.fixture_id,
             "task_id": self._fixture.task_id,
             "reward_model": self._state.last_reward.model_dump(mode="json"),
         }
@@ -167,6 +176,7 @@ class SupportOpsEnvironment(Environment):
             self._state.last_action_error = "Episode already completed."
             observation = self._build_observation(reward=0.0, done=True)
             self._last_info = {
+                "fixture_id": self._fixture.fixture_id,
                 "task_id": self._fixture.task_id,
                 "reward_model": self._state.last_reward.model_dump(mode="json"),
             }
@@ -201,30 +211,31 @@ class SupportOpsEnvironment(Environment):
                     )
                 )
 
+        evaluation = self._grader.evaluate(self._fixture, self._state, self._ticket_lookup_with_meta())
         behavior = evaluate_behavior(
             action=action_obj,
             fixture=self._fixture,
             state=self._state,
+            rubric_breakdown=evaluation.breakdown,
             action_error=action_error,
             repeated_signature=repeated_signature,
             repeated_irrelevant_record=repeated_irrelevant_record,
         )
         self._state.behavior_penalties.extend(behavior.penalties)
         self._state.unsafe_actions.extend(behavior.unsafe_actions)
-
-        evaluation = self._grader.evaluate(self._fixture, self._state, self._ticket_lookup_with_meta())
         self._state.rubric_progress = evaluation.progress
         self._state.rubric_breakdown = evaluation.breakdown
 
-        # Phase tracking — mark newly completed phases.
-        for phase in self._fixture.investigation_phases:
-            if phase.phase not in self._state.completed_phases:
-                scored = {r.check_id for r in evaluation.breakdown if r.score > 0}
-                if all(cid in scored for cid in phase.rubric_check_ids):
-                    self._state.completed_phases.append(phase.phase)
-                    self._state.current_phase = phase.phase
+        newly_completed_phases = identify_newly_completed_phases(
+            self._fixture,
+            self._state,
+            evaluation.breakdown,
+        )
+        if newly_completed_phases:
+            self._state.completed_phases.extend(newly_completed_phases)
+            self._state.current_phase = newly_completed_phases[-1]
 
-        phase_bonus = compute_phase_bonus(self._fixture, self._state, evaluation.breakdown)
+        phase_bonus = compute_phase_bonus(newly_completed_phases)
 
         # QualityReviewAgent scores the action post-step.
         qa_signal = self._quality_review.review(
@@ -266,6 +277,7 @@ class SupportOpsEnvironment(Environment):
         )
         self._action_history.append(trace)
         self._last_info = {
+            "fixture_id": self._fixture.fixture_id,
             "task_id": self._fixture.task_id,
             "reward_model": self._state.last_reward.model_dump(mode="json"),
             "final_score": self._state.final_score,
@@ -493,6 +505,8 @@ class SupportOpsEnvironment(Environment):
             ) if (wc["active_incidents"] or wc["policy_window"]) else None
 
         return SupportObservation(
+            fixture_id=self._fixture.fixture_id,
+            task_id=self._fixture.task_id,
             task_brief=self._fixture.task_brief,
             inbox=inbox,
             active_ticket_id=self._state.active_ticket_id,

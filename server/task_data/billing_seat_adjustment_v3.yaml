@@ -1,0 +1,181 @@
+difficulty: easy
+forbidden_actions:
+- action_type: escalate
+  conditions:
+    escalation_team: security
+  penalty: 0.08
+  reason: Security escalation is unnecessary for a routine billing correction.
+  terminal: false
+kb_articles:
+- article_id: kb_seat_credit_policy
+  content: Support may issue a credit when seat reductions post after invoice generation.
+    Confirm account count and invoice first.
+  keywords:
+  - seat
+  - credit
+  - policy
+  - billing
+  - invoice
+  summary: Explains when manual credits can be issued after seat reductions.
+  title: Seat reduction credit policy
+max_steps: 12
+oracle_reference_path:
+- open_ticket TICKET-2424
+- inspect_record acct_orbix
+- inspect_record inv_apr_5678
+- apply_credit 250 USD
+- add_tag credit-approved
+- set_status resolved
+- draft_reply billing_credit_resolution
+- finalize_resolution billing_credit_applied
+primary_ticket_id: TICKET-2424
+records:
+- body: 'Plan: Enterprise Monthly. Seat count now 15. Seat count until Mar 21 was
+    20. Billing contact Bao Nguyen is approved.'
+  keywords:
+  - account
+  - seats
+  - billing
+  kind: account
+  record_id: acct_orbix
+  related_ticket_ids:
+  - TICKET-2424
+  title: 'Account snapshot: Orbix Technologies'
+- body: 'April invoice billed 20 seats at 50 USD each. Overcharge amount eligible
+    for credit: 250 USD.'
+  keywords:
+  - invoice
+  - credit
+  - billing
+  - april
+  kind: invoice
+  record_id: inv_apr_5678
+  related_ticket_ids:
+  - TICKET-2424
+  title: Invoice INV-5678
+- body: Mid-cycle seat reductions are credited on the next invoice or can be manually
+    credited by support operations.
+  keywords:
+  - contract
+  - credit
+  - policy
+  kind: contract
+  record_id: contract_orbix
+  related_ticket_ids:
+  - TICKET-2424
+  title: Contract addendum
+reply_requirements:
+  checklist:
+  - acknowledge_billing_error
+  - confirm_credit_amount
+  - explain_next_invoice
+  template_id: billing_credit_resolution
+rubric:
+- check_id: select_primary
+  kind: selected_ticket
+  label: Select the primary billing ticket
+  params:
+    ticket_id: TICKET-2424
+  weight: 0.15
+- check_id: inspect_required_records
+  kind: viewed_records_all
+  label: Inspect account and invoice
+  params:
+    record_ids:
+    - acct_orbix
+    - inv_apr_5678
+  weight: 0.25
+- check_id: apply_exact_credit
+  kind: exact_credit
+  label: Apply the exact billing credit
+  params:
+    amount: 250.0
+    currency: USD
+    ticket_id: TICKET-2424
+  weight: 0.25
+- check_id: add_billing_tag
+  kind: tag_added
+  label: Add resolution tag
+  params:
+    tag: credit-approved
+    ticket_id: TICKET-2424
+  weight: 0.1
+- check_id: resolve_ticket
+  kind: ticket_status
+  label: Mark ticket resolved
+  params:
+    status: resolved
+    ticket_id: TICKET-2424
+  weight: 0.1
+- check_id: use_reply_template
+  kind: reply_template
+  label: Use the billing resolution reply template
+  params:
+    template_id: billing_credit_resolution
+  weight: 0.05
+- check_id: include_reply_items
+  kind: reply_contains
+  label: Include key billing reply points
+  params:
+    checklist:
+    - acknowledge_billing_error
+    - confirm_credit_amount
+    - explain_next_invoice
+  weight: 0.05
+- check_id: finalize_correctly
+  kind: final_resolution_code
+  label: Finalize with the correct resolution code
+  params:
+    resolution_code: billing_credit_applied
+  weight: 0.05
+task_brief: 'You are on the SaaS support operations desk. The inbox contains multiple
+  tickets, but only one requires a billing correction right now. Identify the correct
+  ticket, inspect the right records, apply the exact credit, update ticket metadata,
+  send a structured billing reply, and finalize the case safely.
+
+  '
+task_id: billing_seat_adjustment
+tickets:
+- account_id: acct_orbix
+  allowed_actions:
+  - open_ticket
+  - inspect_record
+  - search_kb
+  - set_priority
+  - set_status
+  - add_tag
+  - apply_credit
+  - draft_reply
+  - finalize_resolution
+  from_contact: Bao Nguyen <bao@orbixtech.com>
+  priority: normal
+  status: open
+  subject: Invoice still shows 20 seats after our team dropped to 15
+  summary: Customer says the April invoice still billed 20 seats even though seats
+    were reduced to 15 last month.
+  tags:
+  - billing
+  - seat-change
+  ticket_id: TICKET-2424
+- account_id: acct_starlight
+  allowed_actions:
+  - open_ticket
+  from_contact: Lena Kim <lena@starlight.io>
+  priority: low
+  status: open
+  subject: Can you add multi-factor authentication to the app?
+  summary: Feature request from a standard account.
+  tags:
+  - feature-request
+  ticket_id: TICKET-2425
+- account_id: acct_nebulon
+  allowed_actions:
+  - open_ticket
+  from_contact: Alex Johnson <alex@nebulon.com>
+  priority: low
+  status: open
+  subject: How do I reset my password?
+  summary: Low urgency how-to question.
+  tags:
+  - how-to
+  ticket_id: TICKET-2426

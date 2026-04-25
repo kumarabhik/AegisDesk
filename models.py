@@ -283,6 +283,8 @@ class SupportAction(Action):
 
 
 class SupportObservation(Observation):
+    fixture_id: str = ""
+    task_id: str = ""
     task_brief: str
     inbox: list[TicketSummary] = Field(default_factory=list)
     active_ticket_id: Optional[str] = None
@@ -301,6 +303,7 @@ class SupportObservation(Observation):
 
 
 class SupportState(State):
+    fixture_id: str = ""
     task_id: str = ""
     seed: int = 0
     primary_ticket_id: str = ""
@@ -378,6 +381,8 @@ class ForbiddenActionSpec(BaseModel):
     reason: str
     penalty: float
     terminal: bool = False
+    requires_escalation_first: bool = False
+    requires_checks_first: list[str] = Field(default_factory=list)
 
 
 class ReplyRequirements(BaseModel):
@@ -390,6 +395,7 @@ class ReplyRequirements(BaseModel):
 class TaskFixture(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
+    fixture_id: str = ""
     task_id: str
     difficulty: Difficulty
     task_brief: str
@@ -405,3 +411,9 @@ class TaskFixture(BaseModel):
     investigation_phases: list[InvestigationPhase] = Field(default_factory=list)
     world_context: Optional[dict[str, Any]] = None
     peer_inject: list[PeerInjectSpec] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def default_fixture_identity(self) -> "TaskFixture":
+        if not self.fixture_id:
+            self.fixture_id = self.task_id
+        return self

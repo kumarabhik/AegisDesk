@@ -15,6 +15,7 @@ Run:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import textwrap
 from pathlib import Path
@@ -26,6 +27,7 @@ if str(ROOT_DIR) not in sys.path:
 
 from client import SupportOpsEnv
 from models import SupportAction, SupportObservation
+from server.fixtures import canonical_benchmark_task_ids, private_variant_fixture_ids
 
 ENV_URL = "https://i4mgr00t-meta.hf.space"
 
@@ -132,14 +134,24 @@ class AegisDeskToolEnv:
         self.score = 0.0
         self.done = False
         self.task_id = ""
+        self.fixture_id = ""
 
-    def reset(self, task_id: str = "billing_seat_adjustment", seed: int = 1, **kwargs: Any) -> str:
+    def reset(
+        self,
+        task_id: str | None = "billing_seat_adjustment",
+        fixture_id: str | None = None,
+        seed: int = 1,
+        **kwargs: Any,
+    ) -> str:
         """Start a fresh support episode and return the initial observation text."""
 
         self.score = 0.0
         self.done = False
-        self.task_id = task_id
-        result = self.client.reset(task_id=task_id, seed=seed)
+        self.fixture_id = fixture_id or task_id or "billing_seat_adjustment"
+        self.task_id = task_id or self.fixture_id
+        result = self.client.reset(task_id=task_id, fixture_id=fixture_id, seed=seed)
+        self.fixture_id = result.observation.fixture_id or self.fixture_id
+        self.task_id = result.observation.task_id or self.task_id
         return format_observation(result.observation)
 
     def open_ticket(self, ticket_id: str) -> str:
@@ -351,7 +363,7 @@ class AegisDeskToolEnv:
         observation_text = format_observation(result.observation)
         if result.done:
             observation_text += (
-                f"\n\nEpisode complete for task={self.task_id}. "
+                f"\n\nEpisode complete for fixture={self.fixture_id} task={self.task_id}. "
                 f"Current score={self.score:.4f}."
             )
         return observation_text
@@ -363,28 +375,54 @@ def reward_func(environments, **kwargs) -> list[float]:
     return [float(getattr(env, "score", 0.0)) for env in environments]
 
 
-def build_dataset(repeat_count: int, all_tasks: bool = False):
-    """Build a prompt dataset cycling through tasks with adaptive weighting support."""
+def load_rl_manifest(path: str | None) -> dict[str, Any] | None:
+    """Load an optional RL manifest describing canonical and curriculum fixtures."""
+
+    if not path:
+        return None
+    manifest_path = Path(path)
+    if not manifest_path.exists():
+        return None
+    return json.loads(manifest_path.read_text(encoding="utf-8"))
+
+
+def build_dataset(
+    repeat_count: int,
+    all_tasks: bool = False,
+    rl_manifest_path: str | None = None,
+):
+    """Build a prompt dataset cycling through fixtures with optional curriculum support."""
 
     from datasets import Dataset
 
-    task_subset = (
-        TASK_PROMPTS
-        if all_tasks
-        else {k: v for k, v in TASK_PROMPTS.items() if k in [
-            "billing_seat_adjustment", "login_incident_triage", "suspicious_admin_request"
-        ]}
-    )
+    manifest = load_rl_manifest(rl_manifest_path)
+    if manifest:
+        if all_tasks:
+            fixture_ids = manifest.get(
+                "allowed_grpo_fixture_ids",
+                manifest.get("canonical_train_fixture_ids", canonical_benchmark_task_ids()),
+            )
+        else:
+            fixture_ids = manifest.get("core_fixture_ids", canonical_benchmark_task_ids()[:3])
+    else:
+        fixture_ids = (
+            canonical_benchmark_task_ids() + private_variant_fixture_ids()
+            if all_tasks
+            else canonical_benchmark_task_ids()[:3]
+        )
 
     rows: list[dict[str, Any]] = []
     for seed in range(1, repeat_count + 1):
-        for task_id, task_prompt in task_subset.items():
+        for fixture_id in fixture_ids:
+            task_id = fixture_id.split("_v", 1)[0] if "_v" in fixture_id else fixture_id
+            task_prompt = TASK_PROMPTS[task_id]
             rows.append(
                 {
                     "prompt": [
                         {"role": "system", "content": SYSTEM_PROMPT},
                         {"role": "user", "content": task_prompt},
                     ],
+                    "fixture_id": fixture_id,
                     "task_id": task_id,
                     "seed": seed,
                 }
@@ -398,13 +436,24 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--model",
-        default="Qwen/Qwen3-4B",
+        default="Qwen/Qwen3-8B",
         help="Base model to train with GRPO.",
+    )
+    parser.add_argument(
+        "--phase",
+        choices=("stabilize", "champion"),
+        default="champion",
+        help="stabilize = canonical 9 only, champion = canonical 9 plus private curriculum fixtures.",
     )
     parser.add_argument(
         "--all-tasks",
         action="store_true",
-        help="Train on all 9 tasks (v1 + v2). Default: 3 canonical tasks only.",
+        help="Train on the canonical 9-task pack plus any private curriculum fixtures listed in the RL manifest.",
+    )
+    parser.add_argument(
+        "--rl-manifest",
+        default="training/support_rl_manifest.json",
+        help="Optional RL manifest describing canonical, held-out, and curriculum fixture packs.",
     )
     parser.add_argument(
         "--env-url",
@@ -415,6 +464,26 @@ def parse_args() -> argparse.Namespace:
         "--output-dir",
         default="outputs/aegisdesk-grpo",
         help="Output directory for trainer artifacts.",
+    )
+    parser.add_argument(
+        "--hub-model-id",
+        default=None,
+        help="Optional Hub repo id for pushing trainer outputs.",
+    )
+    parser.add_argument(
+        "--push-to-hub",
+        action="store_true",
+        help="Push outputs to the Hugging Face Hub when hub-model-id is provided.",
+    )
+    parser.add_argument(
+        "--report-to",
+        default="none",
+        help="Trainer reporting backend, for example 'none' or 'trackio'.",
+    )
+    parser.add_argument(
+        "--run-name",
+        default="aegisdesk-grpo",
+        help="Optional descriptive run name for trainer tracking.",
     )
     parser.add_argument(
         "--repeat-count",
@@ -477,7 +546,12 @@ def main() -> None:
 
     from trl import GRPOConfig, GRPOTrainer
 
-    dataset = build_dataset(args.repeat_count, all_tasks=args.all_tasks)
+    use_all_tasks = args.all_tasks or args.phase == "champion"
+    dataset = build_dataset(
+        args.repeat_count,
+        all_tasks=use_all_tasks,
+        rl_manifest_path=args.rl_manifest,
+    )
     trainer = GRPOTrainer(
         model=args.model,
         train_dataset=dataset,
@@ -493,7 +567,10 @@ def main() -> None:
             max_completion_length=args.max_completion_length,
             logging_steps=args.logging_steps,
             remove_unused_columns=False,
-            report_to="none",
+            report_to=args.report_to,
+            run_name=args.run_name,
+            push_to_hub=args.push_to_hub,
+            hub_model_id=args.hub_model_id,
             temperature=0.7,
             log_completions=True,
             chat_template_kwargs={"enable_thinking": False},

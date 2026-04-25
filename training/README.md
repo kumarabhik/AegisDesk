@@ -1,76 +1,183 @@
-# Training AegisDesk with TRL + OpenEnv
+# AegisDesk Training Guide
 
-This directory contains optional, post-submission extras for training experiments. It does not change the judged environment or the validator-facing submission path. The goal here is to make `AegisDesk` usable not only as an evaluated benchmark, but also as a starting point for GRPO-based reinforcement learning with TRL.
+This directory contains the Round 2 training path for the expanded AegisDesk benchmark.
 
-Related links:
-- GitHub repo: `https://github.com/kumarabhik/AegisDesk`
-- Hugging Face Space: `https://huggingface.co/spaces/I4mGr00T/Meta`
-- Live app: `https://i4mgr00t-meta.hf.space`
-- Latest captured validator and benchmark outputs: `RESULTS.md`
+## Benchmark Story
 
-The implementation in this folder follows the current TRL OpenEnv integration pattern documented by Hugging Face. In that pattern, you do not write a custom rollout loop by hand unless you have to. Instead, you define an environment class with a `reset()` method and a set of public tool methods. TRL discovers those methods automatically, exposes them as function-calling tools, and handles the multi-turn loop internally. That is the approach used in `train_grpo_aegisdesk.py`.
+- train on `9` canonical fixtures
+- evaluate on `27` judged fixtures
+- keep `18` held-out `generalization` fixtures out of the training path
+- keep `3` `showcase` fixtures outside the main score-report story
 
-The training wrapper is intentionally conservative. It does not replace the benchmark's own reward shaping or grader logic. Instead, it talks to the deployed environment through the existing client, stores the current score on the environment instance, and returns that score through a simple reward function. This makes the setup easy to reason about and keeps the training example close to the real benchmark behavior.
+The source of truth for fixture splits is:
+- [training/support_rl_manifest.json](support_rl_manifest.json)
 
-## What this starter does
+## Main Files
 
-The starter script:
+- `train_grpo_aegisdesk.py`: TRL/OpenEnv GRPO starter
+- `self_improve.py`: baseline -> harvest -> DPO pairs -> train -> re-evaluate
+- `trajectory_harvester.py`: collects trajectories from benchmark runs
+- `dpo_pair_generator.py`: builds `(chosen, rejected)` preference pairs
+- `adaptive_scheduler.py`: curriculum weighting helpers
+- `AegisDesk_Training.ipynb`: notebook path for HF Jobs / Colab
+- `HF_JOBS_RUNBOOK.md`: stage-by-stage cloud GPU plan with hardware, timeouts, and artifact gates
+- `strongest_submission.py`: numbered 10-step execution path
+- `check_training_readiness.py`: corpus, manifest, dependency, and endpoint readiness doctor
 
-- connects to a running AegisDesk environment, usually the live HF Space
-- resets into one of the three canonical tasks
-- exposes environment actions as meaningful tool methods such as `open_ticket`, `inspect_record`, `apply_credit`, and `finalize_resolution`
-- lets TRL handle the multi-turn tool-calling conversation
-- reads the latest benchmark score from the environment instance and uses it as the training reward
+## Data Pipeline
 
-This is a small but useful bridge from the benchmark into RL experimentation.
-
-## Install
-
-First install the benchmark itself:
-
-```bash
-pip install -e .
-```
-
-Then install the training stack:
+Use:
 
 ```bash
-pip install accelerate datasets transformers trl
+python scripts/fetch_real_datasets.py
 ```
 
-If you want a more isolated setup, create a fresh virtual environment first.
+This fetch/build path now targets:
+- Bitext
+- ABCD
+- Sierra tau-bench / tau2-bench few-shot data
+- Schema-Guided Dialogue
+- HelpSteer2
+- optional DialogStudio / MultiWOZ samples
 
-## Run
+Derived outputs:
+- `training/raw/*`
+- `training/data/support_sft.jsonl`
+- `training/data/support_pref.jsonl`
+- `training/data/dataset_build_report.json`
+- `training/support_rl_manifest.json`
 
-The easiest way to start is:
+Verified build output in this workspace:
+- `support_sft.jsonl`: `15,124` rows
+- `support_pref.jsonl`: `7,119` rows
+- `dataset_build_report.json`: source-level counts and target checks
+
+## Numbered Execution Path
+
+To see the 10-step strongest-submission workflow:
 
 ```bash
-accelerate launch training/train_grpo_aegisdesk.py
+python training/strongest_submission.py --list
 ```
 
-If you want to point at a different environment host or choose a different base model:
+To validate local readiness before GPU work:
+
+```bash
+python training/check_training_readiness.py \
+  --env-url https://i4mgr00t-meta.hf.space \
+  --output training/readiness_report.json
+```
+
+## Recommended Stack
+
+1. Unsloth QLoRA SFT on `support_sft.jsonl`
+2. Unsloth DPO or ORPO on `support_pref.jsonl`
+3. TRL `GRPOTrainer` on the canonical 9-fixture pack
+
+Concrete entrypoints:
+- `train_unsloth_sft.py`
+- `train_unsloth_dpo.py`
+- `train_grpo_aegisdesk.py`
+
+Default model target:
+- `Qwen/Qwen3-8B`
+
+Fallback:
+- `Qwen/Qwen3-4B`
+
+## Run GRPO
+
+Champion path:
 
 ```bash
 accelerate launch training/train_grpo_aegisdesk.py \
+  --phase champion \
+  --rl-manifest training/support_rl_manifest.json \
   --env-url https://i4mgr00t-meta.hf.space \
-  --model Qwen/Qwen3-0.6B \
-  --output-dir outputs/aegisdesk-grpo
+  --model Qwen/Qwen3-8B \
+  --report-to trackio \
+  --run-name aegisdesk-grpo-champion
 ```
 
-The default script is intentionally lightweight. It is meant to be a starter, not a "one click best model" recipe.
+Stabilization path:
 
-## What to tune next
+```bash
+accelerate launch training/train_grpo_aegisdesk.py \
+  --phase stabilize \
+  --rl-manifest training/support_rl_manifest.json \
+  --env-url https://i4mgr00t-meta.hf.space \
+  --model Qwen/Qwen3-8B \
+  --report-to trackio \
+  --run-name aegisdesk-grpo-stabilize
+```
 
-If you want to push this further, the most important knobs are:
+## Run SFT
 
-- `num_generations`
-- `max_completion_length`
-- `gradient_accumulation_steps`
-- `num_train_epochs`
-- `repeat-count`
+```bash
+python training/train_unsloth_sft.py \
+  --dataset training/data/support_sft.jsonl \
+  --output training/outputs/sft-qwen3-8b \
+  --model Qwen/Qwen3-8B \
+  --report-to trackio \
+  --run-name aegisdesk-sft
+```
 
-You can also experiment with different reward definitions. The current starter uses the benchmark's latest score directly, which is the safest and simplest baseline. Later you could compare this against binary success rewards or mixed reward shaping if you want to study training behavior more systematically.
+## Run DPO
 
-## Why this is optional
+```bash
+python training/train_unsloth_dpo.py \
+  --dataset training/data/support_pref.jsonl \
+  --output training/outputs/dpo-qwen3-8b \
+  --model Qwen/Qwen3-8B \
+  --report-to trackio \
+  --run-name aegisdesk-dpo
+```
 
-The Round 1 submission requirements are already satisfied without this directory. These files are here because the surrounding OpenEnv tutorials also emphasize the training story, and AegisDesk is a much more useful project if it can serve as both a benchmark and a learning environment.
+## Run The Self-Improvement Loop
+
+Dry-run:
+
+```bash
+python training/self_improve.py --rounds 1 --dry-run
+```
+
+Real loop:
+
+```bash
+python training/self_improve.py \
+  --rounds 1 \
+  --seeds 3 \
+  --env-url https://i4mgr00t-meta.hf.space \
+  --results-path training/benchmark_results.json
+```
+
+This now benchmarks the full `27` judged fixtures while keeping harvesting/training on the canonical `9`.
+
+## Hardware Plan
+
+Preferred:
+- HF Jobs GPU
+- L4 or A10G class hardware
+- `Qwen/Qwen3-8B`
+- SFT timeout target: `3h`
+- DPO timeout target: `2h`
+- GRPO timeout target: `4h`
+
+Fallback:
+- `t4-medium`
+- `Qwen/Qwen3-4B`
+
+Suggested run order:
+1. `Qwen/Qwen3-8B` SFT on `L4` or `A10G`
+2. `Qwen/Qwen3-8B` DPO on the same class of GPU
+3. GRPO stabilize run on canonical `9`
+4. GRPO champion run on canonical `9` plus private curriculum variants
+5. Baseline and champion evaluation across `27` judged fixtures with `3` seeds
+
+## Current Truth
+
+The repo now contains the correct training structure and evaluation split, but it does **not** yet contain a real champion run. The remaining work is to produce and check in:
+- `training/benchmark_results.json`
+- reward curve PNG
+- loss curve PNG
+- per-track delta figure

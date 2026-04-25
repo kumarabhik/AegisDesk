@@ -33,11 +33,14 @@ class SupportOpsEnv:
         self._session = requests.Session()
 
     def reset(
-        self, task_id: Optional[str] = None, seed: Optional[int] = None
+        self,
+        task_id: Optional[str] = None,
+        fixture_id: Optional[str] = None,
+        seed: Optional[int] = None,
     ) -> ClientStepResult:
         response = self._session.post(
             f"{self.base_url}/reset",
-            json={"task_id": task_id, "seed": seed},
+            json={"task_id": task_id, "fixture_id": fixture_id, "seed": seed},
             timeout=30,
         )
         response.raise_for_status()
@@ -73,13 +76,21 @@ class SupportOpsEnv:
 class LocalSupportOpsEnv:
     """In-process environment runner used for tests and local inference."""
 
-    def __init__(self, task_id: Optional[str] = None, seed: Optional[int] = None):
-        self._environment = SupportOpsEnvironment(task_id=task_id, seed=seed)
+    def __init__(
+        self,
+        task_id: Optional[str] = None,
+        fixture_id: Optional[str] = None,
+        seed: Optional[int] = None,
+    ):
+        self._environment = SupportOpsEnvironment(task_id=task_id, fixture_id=fixture_id, seed=seed)
 
     def reset(
-        self, task_id: Optional[str] = None, seed: Optional[int] = None
+        self,
+        task_id: Optional[str] = None,
+        fixture_id: Optional[str] = None,
+        seed: Optional[int] = None,
     ) -> ClientStepResult:
-        observation = self._environment.reset(task_id=task_id, seed=seed)
+        observation = self._environment.reset(task_id=task_id, fixture_id=fixture_id, seed=seed)
         return ClientStepResult(
             observation=observation,
             reward=observation.reward,

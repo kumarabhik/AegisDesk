@@ -1,0 +1,291 @@
+difficulty: medium_hard
+forbidden_actions:
+- action_type: finalize_resolution
+  conditions:
+    resolution_code: renewal_blockers_resolved
+  penalty: 0.2
+  reason: Cannot finalize renewal before resolving both billing dispute and API escalation.
+  requires_checks_first:
+  - apply_billing_credit
+  - escalate_api_issue
+  terminal: false
+- action_type: apply_credit
+  conditions:
+    amount: 1000.0
+  penalty: 0.15
+  reason: Doubling the credit without evidence is not supported by the invoice record.
+  terminal: false
+investigation_phases:
+- description: Identify and resolve the outstanding billing dispute.
+  label: Billing Sub-Case
+  phase: 1
+  rubric_check_ids:
+  - select_primary
+  - inspect_billing_records
+  - apply_billing_credit
+  - add_billing_resolved_tag
+- description: Identify and resolve the API rate limit escalation.
+  label: API Escalation Sub-Case
+  phase: 2
+  rubric_check_ids:
+  - inspect_api_records
+  - escalate_api_issue
+- description: Draft renewal communication and finalize.
+  label: Renewal Finalization
+  phase: 3
+  rubric_check_ids:
+  - use_reply_template
+  - include_reply_items
+  - finalize_correctly
+kb_articles:
+- article_id: kb_renewal_blocker_resolution
+  content: 'When a renewal is blocked by open issues, resolve each sub-case in order:
+    billing disputes first (apply credits, update tags), then operational escalations
+    (route to incident_response for SLA). Only after both sub-cases are resolved should
+    you draft the renewal summary and finalize. Premature finalization before resolving
+    all blockers results in escalation to the account team.
+
+    '
+  keywords:
+  - renewal
+  - blocker
+  - billing
+  - sla
+  - order
+  - enterprise
+  summary: How to handle multiple open issues blocking an enterprise renewal.
+  title: Resolving blockers before enterprise renewal
+max_steps: 25
+oracle_reference_path:
+- open_ticket TICKET-8001
+- inspect_record acct_clearpath
+- inspect_record inv_apr_clearpath
+- inspect_record contract_clearpath
+- apply_credit 500 USD
+- add_tag billing-resolved
+- inspect_record api_incident_june
+- inspect_record sla_policy_clearpath
+- escalate incident_response
+- add_tag api-acknowledged
+- set_status pending
+- draft_reply renewal_blocker_resolution
+- finalize_resolution renewal_blockers_resolved
+primary_ticket_id: TICKET-8001
+records:
+- body: 'Plan: Enterprise Annual. MRR: 9000 USD. Renewal date: June 1, 2026. Account
+    health: at-risk (renewal pending). Two open issues flagged by customer: billing
+    dispute (Q2) and API incident acknowledgment (June). Billing contact Fatima Al-Rashidi
+    is approved. Account tier: strategic.
+
+    '
+  keywords:
+  - account
+  - renewal
+  - enterprise
+  - clearpath
+  kind: account
+  record_id: acct_clearpath
+  related_ticket_ids:
+  - TICKET-8001
+  title: 'Account snapshot: ClearPath SaaS'
+- body: 'April invoice billed 35 seats at 50 USD each = 1750 USD. Customer''s contract
+    addendum (signed Mar 20) reduced seats from 35 to 25, effective Apr 1. Overcharge:
+    10 seats x 50 USD = 500 USD. Eligible credit: 500 USD.
+
+    '
+  keywords:
+  - invoice
+  - april
+  - credit
+  - overcharge
+  - seats
+  kind: invoice
+  record_id: inv_apr_clearpath
+  related_ticket_ids:
+  - TICKET-8001
+  title: Invoice INV-8104 (April)
+- body: 'Signed addendum dated Mar 20, 2026: seat count reduced from 35 to 25, effective
+    Apr 1, 2026. Signed by Fatima Al-Rashidi. Eligible for credit on April invoice.
+
+    '
+  keywords:
+  - contract
+  - addendum
+  - seats
+  - april
+  - signed
+  kind: contract
+  record_id: contract_clearpath
+  related_ticket_ids:
+  - TICKET-8001
+  title: 'Contract addendum: seat reduction Apr 2026'
+- body: 'Incident 520 active June 15–17, 2026. Edge nodes incorrectly applied rate
+    limits to Enterprise tier accounts. ClearPath SaaS reported 429 errors during
+    this window. Incident resolved June 17. Root cause: bad canary deployment. Affected
+    enterprise accounts entitled to incident acknowledgment reply and SLA credit consideration.
+
+    '
+  keywords:
+  - incident
+  - api
+  - rate-limit
+  - enterprise
+  - '429'
+  kind: incident
+  record_id: api_incident_june
+  related_ticket_ids:
+  - TICKET-8001
+  title: 'Incident 520: Edge rate-limit regression (June)'
+- body: 'Enterprise tier SLA: 99.9% uptime guarantee. SLA breach during incident 520
+    qualifies for incident acknowledgment and service credit. Support must escalate
+    to incident_response team for formal SLA credit calculation. Do not self-approve
+    SLA credits; route to incident_response.
+
+    '
+  keywords:
+  - sla
+  - credit
+  - enterprise
+  - incident
+  - escalate
+  kind: contract
+  record_id: sla_policy_clearpath
+  related_ticket_ids:
+  - TICKET-8001
+  title: 'SLA policy: Enterprise tier'
+reply_requirements:
+  checklist:
+  - confirm_billing_credit_applied
+  - acknowledge_api_incident
+  - reference_sla_escalation
+  - confirm_renewal_path_clear
+  template_id: renewal_blocker_resolution
+rubric:
+- check_id: select_primary
+  kind: selected_ticket
+  label: Select the renewal blocker ticket
+  params:
+    ticket_id: TICKET-8001
+  weight: 0.08
+- check_id: inspect_billing_records
+  kind: viewed_records_all
+  label: Inspect account, invoice, and contract for billing sub-case
+  params:
+    record_ids:
+    - acct_clearpath
+    - inv_apr_clearpath
+    - contract_clearpath
+  weight: 0.15
+- check_id: apply_billing_credit
+  kind: exact_credit
+  label: Apply the correct billing credit (500 USD)
+  params:
+    amount: 500.0
+    currency: USD
+    ticket_id: TICKET-8001
+  weight: 0.18
+- check_id: add_billing_resolved_tag
+  kind: tag_added
+  label: Tag billing sub-case resolved
+  params:
+    tag: billing-resolved
+    ticket_id: TICKET-8001
+  weight: 0.05
+- check_id: inspect_api_records
+  kind: viewed_records_all
+  label: Inspect API incident and SLA policy records
+  params:
+    record_ids:
+    - api_incident_june
+    - sla_policy_clearpath
+  weight: 0.15
+- check_id: escalate_api_issue
+  kind: escalation_team
+  label: Escalate API/SLA sub-case to incident_response
+  params:
+    escalation_team: incident_response
+  weight: 0.15
+- check_id: use_reply_template
+  kind: reply_template
+  label: Use the renewal resolution reply template
+  params:
+    template_id: renewal_blocker_resolution
+  weight: 0.05
+- check_id: include_reply_items
+  kind: reply_contains
+  label: Include key renewal resolution reply points
+  params:
+    checklist:
+    - confirm_billing_credit_applied
+    - acknowledge_api_incident
+    - reference_sla_escalation
+    - confirm_renewal_path_clear
+  weight: 0.1
+- check_id: finalize_correctly
+  kind: final_resolution_code
+  label: Finalize with renewal resolved code
+  params:
+    resolution_code: renewal_blockers_resolved
+  weight: 0.09
+task_brief: 'A key enterprise customer is up for annual renewal, but two unresolved
+  issues are blocking the renewal: an outstanding billing dispute from last quarter
+  and an unacknowledged API rate limit escalation. You must resolve both sub-cases
+  before finalizing the renewal. Resolving only one issue and finalizing early will
+  result in partial credit. The full six-step workflow must be completed for each
+  sub-case before the renewal can be closed.
+
+  '
+task_id: contract_renewal_negotiation
+tickets:
+- account_id: acct_clearpath
+  allowed_actions:
+  - open_ticket
+  - inspect_record
+  - search_kb
+  - set_priority
+  - set_status
+  - add_tag
+  - apply_credit
+  - escalate
+  - draft_reply
+  - finalize_resolution
+  from_contact: Fatima Al-Rashidi <fatima@clearpathsaas.com>
+  priority: high
+  status: open
+  subject: 'Renewal review: two open issues must be resolved before we renew'
+  summary: 'Enterprise account up for renewal next month. Customer has two open issues:
+    (1) billing discrepancy from Q2 — overcharged 450 USD on April invoice; (2) API
+    429 errors during the June edge incident that were never acknowledged. Customer
+    will not sign renewal until both are resolved.
+
+    '
+  tags:
+  - renewal
+  - billing
+  - api
+  - enterprise
+  ticket_id: TICKET-8001
+- account_id: acct_infracore
+  allowed_actions:
+  - open_ticket
+  from_contact: ops@infracore.io
+  priority: normal
+  status: open
+  subject: Password reset not sending emails
+  summary: Transactional email for password reset not arriving. Unrelated to renewal.
+  tags:
+  - email
+  - auth
+  ticket_id: TICKET-8002
+- account_id: acct_blueleaf
+  allowed_actions:
+  - open_ticket
+  from_contact: Marko Petrov <marko@blueleaf.io>
+  priority: low
+  status: open
+  subject: Request to add a third admin user
+  summary: Standard admin provisioning request. Low priority.
+  tags:
+  - admin
+  - provisioning
+  ticket_id: TICKET-8003

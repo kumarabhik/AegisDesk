@@ -11,3 +11,18 @@ venv/
 dist/
 build/
 Hello everyone.docx
+
+# Large generated training data (regenerate with scripts/fetch_real_datasets.py)
+training/raw/
+training/data/support_sft.jsonl
+training/data/support_pref.jsonl
+training/data/helpsteer2_pref.jsonl
+training/data/abcd_support_sft.jsonl
+training/data/bitext_support_sft.jsonl
+training/data/sgd_support_sft.jsonl
+
+# AI assistant workspaces
+.agents/
+
+# Reward/loss curve outputs (committed manually after training run)
+training/*.png

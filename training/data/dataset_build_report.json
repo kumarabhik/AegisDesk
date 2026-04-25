@@ -1,0 +1,24 @@
+{
+  "benchmark": "AegisDesk",
+  "targets": {
+    "support_sft_min": 15000,
+    "support_sft_max": 20000,
+    "support_pref_min": 5000
+  },
+  "caps": {
+    "bitext": 6000,
+    "abcd": 5000,
+    "sgd": 4000,
+    "optional_dialogstudio": 0
+  },
+  "files": {
+    "bitext_support_sft.jsonl": 5776,
+    "abcd_support_sft.jsonl": 5000,
+    "taubench_sft.jsonl": 69,
+    "sgd_support_sft.jsonl": 4000,
+    "helpsteer2_pref.jsonl": 7118,
+    "dialogstudio_multiwoz_sample.jsonl": 0,
+    "support_sft.jsonl": 15124,
+    "support_pref.jsonl": 7119
+  }
+}

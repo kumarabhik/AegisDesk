@@ -1,0 +1,74 @@
+{
+  "status": "not_ready",
+  "critical_errors": [
+    "/tasks endpoint is serving a legacy schema without fixture_id/judged fields; deploy the current repo before Step 10 evaluation",
+    "/benchmark-card endpoint is serving a legacy extended/total taxonomy; deploy the current repo before Step 10 evaluation"
+  ],
+  "advisories": [
+    "Local module not installed: unsloth",
+    "Local module not installed: trl",
+    "Local module not installed: datasets"
+  ],
+  "paths": {
+    "files": {
+      "support_sft.jsonl": true,
+      "support_pref.jsonl": true,
+      "support_rl_manifest.json": true,
+      "dataset_build_report.json": true
+    },
+    "counts": {
+      "support_sft_rows": 15124,
+      "support_pref_rows": 7119
+    }
+  },
+  "dataset_report": {
+    "targets": {
+      "support_sft_min": 15000,
+      "support_sft_max": 20000,
+      "support_pref_min": 5000
+    },
+    "files": {
+      "bitext_support_sft.jsonl": 5776,
+      "abcd_support_sft.jsonl": 5000,
+      "taubench_sft.jsonl": 69,
+      "sgd_support_sft.jsonl": 4000,
+      "helpsteer2_pref.jsonl": 7118,
+      "dialogstudio_multiwoz_sample.jsonl": 0,
+      "support_sft.jsonl": 15124,
+      "support_pref.jsonl": 7119
+    }
+  },
+  "manifest": {
+    "canonical_train_count": 9,
+    "held_out_count": 18,
+    "showcase_count": 3,
+    "judged_count": 27,
+    "security_slice_count": 6
+  },
+  "local_modules": {
+    "torch": true,
+    "transformers": true,
+    "accelerate": true,
+    "unsloth": false,
+    "trl": false,
+    "datasets": false,
+    "matplotlib": true
+  },
+  "env_vars": {
+    "HF_TOKEN": true,
+    "MODEL_NAME": true,
+    "API_BASE_URL": true
+  },
+  "env_endpoint": {
+    "env_url": "https://i4mgr00t-meta.hf.space",
+    "surfaced_count": 12,
+    "judged_count": 0,
+    "task_counts": {
+      "core": 3,
+      "extended": 3,
+      "total": 12
+    },
+    "legacy_tasks_schema": true,
+    "legacy_benchmark_card": true
+  }
+}

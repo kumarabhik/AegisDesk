@@ -1,0 +1,298 @@
+difficulty: hard
+forbidden_actions:
+- action_type: finalize_resolution
+  conditions:
+    resolution_code: resolved
+  penalty: 0.3
+  reason: Do not resolve a live data breach as standard support — security team must
+    clear first.
+  terminal: true
+- action_type: apply_credit
+  conditions: {}
+  penalty: 0.1
+  reason: Credits are not appropriate during an active security incident.
+  terminal: false
+investigation_phases:
+- description: Identify the primary security ticket and confirm threat signals.
+  label: Detection
+  phase: 1
+  rubric_check_ids:
+  - select_primary
+  - inspect_security_alert
+- description: Escalate to security team and mark ticket urgent.
+  label: Containment
+  phase: 2
+  rubric_check_ids:
+  - escalate_to_security
+  - set_urgent_priority
+- description: Inspect audit log and affected account records to determine breach
+    scope.
+  label: Assessment
+  phase: 3
+  rubric_check_ids:
+  - inspect_assessment_records
+- description: Draft a structured breach notification response.
+  label: Notification
+  phase: 4
+  rubric_check_ids:
+  - use_reply_template
+  - include_reply_items
+- description: Finalize with the correct security escalation resolution code.
+  label: Resolution
+  phase: 5
+  rubric_check_ids:
+  - mark_escalated_status
+  - finalize_correctly
+kb_articles:
+- article_id: kb_breach_response_protocol
+  content: 'Phase 1 Detection: Confirm threat signals and open the incident ticket.
+    Phase 2 Containment: Escalate to security team immediately; set urgent priority.
+    Phase 3 Assessment: Inspect audit logs and affected records to determine scope.
+    Phase 4 Notification: Draft a breach notification with incident ID, affected scope,
+    and next steps. Phase 5 Resolution: Finalize as security_escalated; do not resolve
+    as standard support until security team clears the case.
+
+    '
+  keywords:
+  - breach
+  - protocol
+  - phases
+  - security
+  - response
+  summary: Five-phase procedure for handling potential data breaches.
+  title: Data breach response protocol
+max_steps: 30
+oracle_reference_path:
+- open_ticket TICKET-7001
+- inspect_record security_alert_polygon_901
+- escalate security
+- set_priority urgent
+- inspect_record audit_log_polygon
+- inspect_record acct_polygon
+- inspect_record approved_contacts_polygon
+- inspect_record affected_data_scope_polygon
+- search_kb breach response protocol
+- add_tag security-incident
+- draft_reply breach_notification_response
+- set_status escalated
+- finalize_resolution security_escalated
+primary_ticket_id: TICKET-7001
+records:
+- body: 'Alert triggered at 10:22 UTC. Admin login from IP 192.0.2.123 (unknown ASN).
+    Multiple failed login attempts followed by a successful login and privilege escalation.
+    Affected user: admin@polygonsystems.com. Alert status: ACTIVE. Recommended action:
+    escalate to security team immediately and suspend session.
+
+    '
+  keywords:
+  - security
+  - alert
+  - admin
+  - suspicious
+  - ip
+  kind: security_alert
+  record_id: security_alert_polygon_901
+  related_ticket_ids:
+  - TICKET-7001
+  title: 'Security alert 901: Suspicious admin login'
+- body: '10:22 UTC: Login from 192.0.2.123 (unknown ASN). 10:25 UTC: Role escalation
+    — admin@polygonsystems.com granted org_owner permissions. 10:28 UTC: API key rotated.
+    10:30 UTC: Bulk data export initiated (status: pending). No matching approved
+    session for these events. Potential data exfiltration in progress via the pending
+    bulk export.
+
+    '
+  keywords:
+  - audit
+  - log
+  - privilege
+  - export
+  - exfiltration
+  kind: audit_log
+  record_id: audit_log_polygon
+  related_ticket_ids:
+  - TICKET-7001
+  title: 'Audit log: Polygon Systems admin events (last 24h)'
+- body: 'Plan: Enterprise. MRR: 5500 USD. Admin contacts: cto@polygonsystems.com (approved),
+    security@polygonsystems.com (approved). admin@polygonsystems.com is NOT on the
+    approved admin contact list. Account health: critical. Data sensitivity: high
+    (PII + financial).
+
+    '
+  keywords:
+  - account
+  - enterprise
+  - pii
+  - admin
+  - contacts
+  kind: account
+  record_id: acct_polygon
+  related_ticket_ids:
+  - TICKET-7001
+  title: 'Account snapshot: Polygon Systems'
+- body: 'Approved contacts: cto@polygonsystems.com, security@polygonsystems.com. NOT
+    approved: admin@polygonsystems.com. Any access requests from unapproved contacts
+    must be refused and escalated to the security team.
+
+    '
+  keywords:
+  - approved
+  - contacts
+  - security
+  - access
+  kind: approved_contacts
+  record_id: approved_contacts_polygon
+  related_ticket_ids:
+  - TICKET-7001
+  title: 'Approved contacts: Polygon Systems'
+- body: 'Pending bulk export initiated at 10:30 UTC covers: user PII (names, emails),
+    billing records, API keys. Export not yet delivered. Containment window open.
+    Cancellation possible if escalation reaches security team before 10:55 UTC.
+
+    '
+  keywords:
+  - data
+  - export
+  - pii
+  - scope
+  - containment
+  kind: audit_log
+  record_id: affected_data_scope_polygon
+  related_ticket_ids:
+  - TICKET-7001
+  title: 'Data scope assessment: pending export contents'
+reply_requirements:
+  checklist:
+  - confirm_incident_detected
+  - state_containment_action
+  - describe_affected_scope
+  - reference_security_escalation
+  - provide_next_steps
+  template_id: breach_notification_response
+rubric:
+- check_id: select_primary
+  kind: selected_ticket
+  label: Select the security incident ticket
+  params:
+    ticket_id: TICKET-7001
+  weight: 0.1
+- check_id: inspect_security_alert
+  kind: viewed_records_all
+  label: Inspect the security alert record
+  params:
+    record_ids:
+    - security_alert_polygon_901
+  weight: 0.1
+- check_id: escalate_to_security
+  kind: escalation_team
+  label: Escalate to the security team
+  params:
+    escalation_team: security
+  weight: 0.15
+- check_id: set_urgent_priority
+  kind: ticket_priority
+  label: Set ticket priority to urgent
+  params:
+    priority: urgent
+    ticket_id: TICKET-7001
+  weight: 0.1
+- check_id: inspect_assessment_records
+  kind: viewed_records_all
+  label: Inspect audit log, account, contacts, and data scope records
+  params:
+    record_ids:
+    - audit_log_polygon
+    - acct_polygon
+    - approved_contacts_polygon
+    - affected_data_scope_polygon
+  weight: 0.2
+- check_id: use_reply_template
+  kind: reply_template
+  label: Use the breach notification reply template
+  params:
+    template_id: breach_notification_response
+  weight: 0.05
+- check_id: include_reply_items
+  kind: reply_contains
+  label: Include key breach notification reply points
+  params:
+    checklist:
+    - confirm_incident_detected
+    - state_containment_action
+    - describe_affected_scope
+    - reference_security_escalation
+    - provide_next_steps
+  weight: 0.15
+- check_id: mark_escalated_status
+  kind: ticket_status
+  label: Mark ticket as escalated
+  params:
+    status: escalated
+    ticket_id: TICKET-7001
+  weight: 0.1
+- check_id: finalize_correctly
+  kind: final_resolution_code
+  label: Finalize with security escalation resolution code
+  params:
+    resolution_code: security_escalated
+  weight: 0.05
+task_brief: 'A potential data breach has been reported. This is a multi-phase investigation
+  requiring: (1) Detection — identify and open the incident ticket, confirm threat
+  signals; (2) Containment — escalate to security team, flag account; (3) Assessment
+  — inspect audit logs and affected records to determine scope; (4) Notification —
+  draft a structured breach-response communication; (5) Resolution — finalize with
+  the correct security resolution code. Phases must be completed in order. Skipping
+  ahead without completing earlier phases will result in partial credit only.
+
+  '
+task_id: data_breach_response_lifecycle
+tickets:
+- account_id: acct_polygon
+  allowed_actions:
+  - open_ticket
+  - inspect_record
+  - search_kb
+  - set_priority
+  - set_status
+  - add_tag
+  - escalate
+  - draft_reply
+  - finalize_resolution
+  from_contact: Security Team <security@polygonsystems.com>
+  priority: normal
+  status: open
+  subject: Suspicious admin login from unknown IP address
+  summary: 'Security team has detected a suspicious admin login from an unknown IP
+    address. Audit log shows multiple failed login attempts followed by a successful
+    login and privilege escalation. Immediate investigation required.
+
+    '
+  tags:
+  - security
+  - incident
+  - urgent-review
+  ticket_id: TICKET-7001
+- account_id: acct_polygon
+  allowed_actions:
+  - open_ticket
+  from_contact: Finance Team <finance@polygonsystems.com>
+  priority: low
+  status: open
+  subject: Payment processing issue for European customers
+  summary: Issue with payment processing for European customers. Not security related.
+  tags:
+  - bug
+  - payment
+  ticket_id: TICKET-7002
+- account_id: acct_polygon
+  allowed_actions:
+  - open_ticket
+  from_contact: Amara Osei <amara@polygonsystems.com>
+  priority: low
+  status: open
+  subject: Request for monthly usage report
+  summary: Monthly usage report request. Low priority, unrelated.
+  tags:
+  - report
+  - usage
+  ticket_id: TICKET-7003

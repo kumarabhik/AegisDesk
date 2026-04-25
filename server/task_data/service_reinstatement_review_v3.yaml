@@ -1,0 +1,226 @@
+difficulty: easy_medium
+forbidden_actions:
+- action_type: escalate
+  conditions:
+    escalation_team: billing_ops
+  penalty: 0.08
+  reason: Escalation to billing_ops is unnecessary during the grace period — immediate
+    reinstatement is authorized.
+  terminal: false
+kb_articles:
+- article_id: kb_account_reinstatement
+  content: 'Verify payment has cleared on the account and invoice records. Check whether
+    the current policy window (world context) allows immediate reinstatement. During
+    the Q2 retention grace period, accounts paying within 15 days of suspension can
+    be reinstated immediately. Tag the ticket with ''reinstated'' and set status to
+    resolved after reinstatement is confirmed.
+
+    '
+  keywords:
+  - reinstatement
+  - suspension
+  - payment
+  - policy
+  - grace
+  summary: Steps to reinstate a suspended account after payment is confirmed.
+  title: Account reinstatement after suspension
+max_steps: 12
+oracle_reference_path:
+- open_ticket TICKET-9001
+- inspect_record acct_driftline
+- inspect_record inv_apr_driftline
+- inspect_record reinstatement_policy
+- search_kb account reinstatement grace period
+- add_tag reinstated
+- set_status resolved
+- draft_reply account_reinstatement_confirmation
+- finalize_resolution account_reinstated
+primary_ticket_id: TICKET-9001
+records:
+- body: 'Plan: Professional Monthly. Account status: SUSPENDED (since April 14, 2026
+    — 7 days ago). Suspension reason: unpaid invoice INV-9820 (due April 9). Payment
+    of 450 USD received April 21, 2026. All data retained during suspension. Billing
+    contact Dmitri Volkov is approved.
+
+    '
+  keywords:
+  - account
+  - suspended
+  - payment
+  - reinstatement
+  - driftline
+  kind: account
+  record_id: acct_driftline
+  related_ticket_ids:
+  - TICKET-9001
+  title: 'Account snapshot: Driftline Software'
+- body: 'Invoice INV-9820: 450 USD due April 9, 2026. Payment received April 21, 2026
+    (12 days late, 7 days after suspension). Payment cleared and confirmed. Account
+    balance: 0 USD outstanding.
+
+    '
+  keywords:
+  - invoice
+  - payment
+  - cleared
+  - april
+  - balance
+  kind: invoice
+  record_id: inv_apr_driftline
+  related_ticket_ids:
+  - TICKET-9001
+  title: Invoice INV-9820 (April)
+- body: 'Standard reinstatement: payment must be received within 30 days of suspension.
+    Standard cases require billing_ops approval. Exception: during the Q2 retention
+    grace period, accounts that pay within 15 days of suspension qualify for immediate
+    reinstatement without approval. Driftline Software paid 7 days post-suspension,
+    which qualifies for the grace period exception.
+
+    '
+  keywords:
+  - reinstatement
+  - policy
+  - grace
+  - approval
+  - suspension
+  kind: contract
+  record_id: reinstatement_policy
+  related_ticket_ids:
+  - TICKET-9001
+  title: 'Reinstatement policy: suspension and recovery'
+reply_requirements:
+  checklist:
+  - confirm_payment_received
+  - confirm_service_reinstated
+  - confirm_data_retained
+  - explain_next_billing_cycle
+  template_id: account_reinstatement_confirmation
+rubric:
+- check_id: select_primary
+  kind: selected_ticket
+  label: Select the reinstatement request ticket
+  params:
+    ticket_id: TICKET-9001
+  weight: 0.1
+- check_id: inspect_required_records
+  kind: viewed_records_all
+  label: Inspect account and invoice to verify payment
+  params:
+    record_ids:
+    - acct_driftline
+    - inv_apr_driftline
+  weight: 0.25
+- check_id: inspect_policy_record
+  kind: viewed_records_all
+  label: Inspect reinstatement policy to confirm grace period eligibility
+  params:
+    record_ids:
+    - reinstatement_policy
+  weight: 0.15
+- check_id: add_reinstated_tag
+  kind: tag_added
+  label: Tag ticket as reinstated
+  params:
+    tag: reinstated
+    ticket_id: TICKET-9001
+  weight: 0.15
+- check_id: resolve_ticket
+  kind: ticket_status
+  label: Mark ticket resolved
+  params:
+    status: resolved
+    ticket_id: TICKET-9001
+  weight: 0.1
+- check_id: use_reply_template
+  kind: reply_template
+  label: Use the reinstatement confirmation reply template
+  params:
+    template_id: account_reinstatement_confirmation
+  weight: 0.05
+- check_id: include_reply_items
+  kind: reply_contains
+  label: Include key reinstatement reply points
+  params:
+    checklist:
+    - confirm_payment_received
+    - confirm_service_reinstated
+    - confirm_data_retained
+    - explain_next_billing_cycle
+  weight: 0.15
+- check_id: finalize_correctly
+  kind: final_resolution_code
+  label: Finalize with reinstatement resolved code
+  params:
+    resolution_code: account_reinstated
+  weight: 0.05
+task_brief: 'A customer account was suspended due to non-payment. The customer has
+  now paid and is requesting reinstatement. You must verify payment status, confirm
+  the account is eligible for reinstatement per the current policy window, and reactivate
+  service. The world state indicates a policy grace period is currently active, which
+  affects whether reinstatement can proceed immediately or requires approval. Do not
+  reinstate until payment is verified and the policy window is confirmed.
+
+  '
+task_id: service_reinstatement_review
+tickets:
+- account_id: acct_driftline
+  allowed_actions:
+  - open_ticket
+  - inspect_record
+  - search_kb
+  - set_priority
+  - set_status
+  - add_tag
+  - escalate
+  - draft_reply
+  - finalize_resolution
+  from_contact: Dmitri Volkov <dmitri@driftline.software>
+  priority: normal
+  status: open
+  subject: Account suspended — payment now processed, please reinstate
+  summary: 'Account was suspended 7 days ago for overdue payment. Customer says payment
+    was processed two days ago. Requesting immediate reinstatement and confirmation
+    that no data was lost during suspension.
+
+    '
+  tags:
+  - suspension
+  - reinstatement
+  - billing
+  ticket_id: TICKET-9001
+- account_id: acct_driftline
+  allowed_actions:
+  - open_ticket
+  from_contact: Elena Ivanova <elena@driftline.software>
+  priority: low
+  status: open
+  subject: Can we upgrade our plan to Enterprise?
+  summary: Upgrade inquiry from same account. Not urgent while account is suspended.
+  tags:
+  - upgrade
+  - sales
+  ticket_id: TICKET-9002
+- account_id: acct_pixelcraft
+  allowed_actions:
+  - open_ticket
+  from_contact: Carlos Mendes <carlos@pixelcraft.io>
+  priority: normal
+  status: open
+  subject: Webhook signature validation failing
+  summary: Webhook security signature failing on new endpoint. Developer support request.
+  tags:
+  - webhook
+  - api
+  - security
+  ticket_id: TICKET-9003
+world_context:
+  account_health_index: 0.62
+  active_incidents: []
+  policy_window:
+    active: true
+    affects_tasks:
+    - service_reinstatement_review
+    description: Suspended accounts that pay within 15 days of suspension are eligible
+      for immediate reinstatement without approval.
+    name: Q2 retention grace period
+  region: us-east

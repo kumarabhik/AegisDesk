@@ -49,6 +49,12 @@ def build_dpo_pair(
 
     return {
         "task_id": win_episode["task_id"],
+        "fixture_id": win_episode.get("fixture_id"),
+        "safety_slice": (
+            "security"
+            if win_episode.get("task_id") in {"suspicious_admin_request", "api_partner_access_audit"}
+            else "general"
+        ),
         "step": step_idx,
         "prompt": win_step["prompt"],
         "chosen": win_step.get("raw_output", ""),

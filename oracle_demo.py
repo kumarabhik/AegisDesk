@@ -16,12 +16,19 @@ def build_parser() -> argparse.ArgumentParser:
     """Create the CLI argument parser."""
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--task-id", help="Run a single task id instead of a whole pack.")
+    parser.add_argument(
+        "--fixture-id",
+        help="Run a single exact fixture id instead of a whole pack.",
+    )
+    parser.add_argument(
+        "--task-id",
+        help="Run one canonical task family instead of a whole pack.",
+    )
     parser.add_argument(
         "--pack",
-        choices=("core", "extended", "all"),
-        default="core",
-        help="Which task pack to run when --task-id is not provided.",
+        choices=("core", "v2", "benchmark", "generalization", "showcase", "extended", "all"),
+        default="benchmark",
+        help="Which fixture pack to run when no single task/fixture is provided.",
     )
     parser.add_argument("--seed", type=int, default=7, help="Deterministic seed to use.")
     parser.add_argument(
@@ -60,22 +67,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
 
-    task_ids = [args.task_id] if args.task_id else oracle_task_ids(args.pack)
+    target_ids = [args.fixture_id] if args.fixture_id else ([args.task_id] if args.task_id else oracle_task_ids(args.pack))
     reports = []
-    for task_id in task_ids:
-        report = generate_trajectory_report(task_id, seed=args.seed, env_url=args.env_url)
+    for target_id in target_ids:
+        report = generate_trajectory_report(target_id, seed=args.seed, env_url=args.env_url)
         write_report_files(
             report,
-            output_json=derive_output_path(args.output_json, task_id),
-            output_md=derive_output_path(args.output_md, task_id),
+            output_json=derive_output_path(args.output_json, report["fixture_id"]),
+            output_md=derive_output_path(args.output_md, report["fixture_id"]),
         )
         reports.append(report)
 
     summary = {
-        "pack": args.pack if not args.task_id else "single",
+        "pack": args.pack if not (args.task_id or args.fixture_id) else "single",
         "seed": args.seed,
         "reports": [
             {
+                "fixture_id": report["fixture_id"],
                 "task_id": report["task_id"],
                 "track": report["track"],
                 "difficulty": report["difficulty"],
