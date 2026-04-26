@@ -88,16 +88,46 @@ def load_qwen_kaggle_model(
     return tokenizer, model
 
 
-def strip_reasoning(text: str) -> str:
+def completion_to_text(completion: Any) -> str:
+    """Normalize GRPO completions into a plain text string for parsing.
+
+    TRL may hand reward functions either raw strings or conversational
+    structures like [{"role": "assistant", "content": "..."}].
+    """
+
+    if completion is None:
+        return ""
+    if isinstance(completion, str):
+        return completion
+    if isinstance(completion, bytes):
+        return completion.decode("utf-8", errors="ignore")
+    if isinstance(completion, dict):
+        if "content" in completion:
+            return completion_to_text(completion["content"])
+        if "text" in completion:
+            return completion_to_text(completion["text"])
+        return json.dumps(completion, ensure_ascii=False)
+    if isinstance(completion, list):
+        parts: list[str] = []
+        for item in completion:
+            text = completion_to_text(item)
+            if text:
+                parts.append(text)
+        return "\n".join(parts)
+    return str(completion)
+
+
+def strip_reasoning(text: Any) -> str:
     """Remove think blocks and markdown fences before JSON parsing."""
 
-    cleaned = re.sub(r"<think>.*?</think>", "", text or "", flags=re.DOTALL | re.IGNORECASE)
+    normalized = completion_to_text(text)
+    cleaned = re.sub(r"<think>.*?</think>", "", normalized or "", flags=re.DOTALL | re.IGNORECASE)
     cleaned = cleaned.replace("```json", "```").replace("```JSON", "```")
     cleaned = cleaned.replace("```", " ")
     return cleaned.strip()
 
 
-def parse_action_text(text: str, *, fallback_ticket: str = "fallback") -> dict[str, Any]:
+def parse_action_text(text: Any, *, fallback_ticket: str = "fallback") -> dict[str, Any]:
     """Parse an action JSON object from a raw model completion."""
 
     cleaned = strip_reasoning(text)
