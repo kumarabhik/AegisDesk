@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-04-26T06:17:20.186171",
+  "model": "Qwen/Qwen2.5-72B-Instruct",
+  "env_url": "https://i4mgr00t-meta.hf.space",
+  "eval_type": "zero_shot_multistep",
+  "task_scores": {
+    "billing_seat_adjustment": 0.525,
+    "login_incident_triage": 0.425,
+    "suspicious_admin_request": 0.25,
+    "customer_escalation_chain": 0.2333,
+    "multi_tier_billing_dispute": 0.2667,
+    "data_breach_response_lifecycle": 0.4,
+    "contract_renewal_negotiation": 0.18,
+    "service_reinstatement_review": 0.375,
+    "api_partner_access_audit": 0.2667
+  },
+  "mean_score": 0.32463333333333333,
+  "v1_baseline": 0.27,
+  "delta": 0.05463333333333331
+}

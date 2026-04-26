@@ -14,12 +14,12 @@ from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".env")
+load_dotenv(Path(__file__).parent.parent / ".env", override=True)
 
 HF_TOKEN    = os.environ["HF_TOKEN"]
 ENV_URL     = os.environ.get("ENV_BASE_URL", "https://i4mgr00t-meta.hf.space")
 API_BASE    = os.environ.get("API_BASE_URL",  "https://router.huggingface.co/v1")
-MODEL_NAME  = os.environ.get("MODEL_NAME",    "Qwen/Qwen3-4B")
+MODEL_NAME  = os.environ.get("MODEL_NAME",    "Qwen/Qwen2.5-72B-Instruct")
 
 try:
     from openai import OpenAI
@@ -49,26 +49,27 @@ ALL_TASKS = [
 SYSTEM_PROMPT = """\
 You are an expert B2B SaaS support operator working inside AegisDesk.
 
-Rules:
-- Open the correct ticket FIRST before inspecting any records.
-- Inspect ALL relevant records before taking any mutating action.
-- Follow policy: do not apply credits without verifying billing records.
-- Escalate security-sensitive requests; never fulfil them directly.
-- Finalize the resolution only after completing all investigation steps.
+Rules (follow in order):
+1. Open the correct ticket FIRST (look at inbox — pick the ticket matching the task).
+2. Inspect ALL available records before taking any mutating action.
+3. Apply credits, tags, or status changes only after inspecting records.
+4. Escalate security-sensitive requests; never fulfil them directly.
+5. Draft a reply, then finalize the resolution last.
+6. NEVER repeat the same action twice — if you already opened a ticket, move to inspect_record next.
 
-You will receive the current console state as JSON. Respond ONLY with a \
-single JSON object that matches one of these action schemas:
+You will receive the current console state. Use active_ticket_id and available_record_ids \
+to decide your next action. Respond ONLY with a single JSON object:
 
-{"action_type": "open_ticket",          "ticket_id": "..."}
-{"action_type": "inspect_record",       "record_id": "..."}
-{"action_type": "search_kb",            "query": "..."}
-{"action_type": "set_priority",         "ticket_id": "...", "priority": "low|medium|high|critical"}
-{"action_type": "set_status",           "ticket_id": "...", "status": "open|in_progress|resolved|closed"}
-{"action_type": "add_tag",              "ticket_id": "...", "tag": "..."}
-{"action_type": "apply_credit",         "ticket_id": "...", "amount": 0.0, "currency": "USD"}
-{"action_type": "escalate",             "ticket_id": "...", "escalation_team": "..."}
-{"action_type": "draft_reply",          "ticket_id": "...", "template_id": "..."}
-{"action_type": "finalize_resolution",  "ticket_id": "...", "resolution_code": "..."}
+{"action_type": "open_ticket",          "ticket_id": "<id from inbox>"}
+{"action_type": "inspect_record",       "record_id": "<id from available_record_ids>"}
+{"action_type": "search_kb",            "query": "<search terms>"}
+{"action_type": "set_priority",         "ticket_id": "<id>", "priority": "low|medium|high|critical"}
+{"action_type": "set_status",           "ticket_id": "<id>", "status": "open|in_progress|resolved|closed"}
+{"action_type": "add_tag",              "ticket_id": "<id>", "tag": "<tag>"}
+{"action_type": "apply_credit",         "ticket_id": "<id>", "amount": 0.0, "currency": "USD"}
+{"action_type": "escalate",             "ticket_id": "<id>", "escalation_team": "<team>"}
+{"action_type": "draft_reply",          "ticket_id": "<id>", "template_id": "<template>"}
+{"action_type": "finalize_resolution",  "ticket_id": "<id>", "resolution_code": "<code>"}
 
 Output ONLY the JSON object — no explanation, no markdown, no extra text.\
 """
@@ -126,19 +127,63 @@ def call_model(obs_text: str) -> dict:
 
 # ── Episode runner ────────────────────────────────────────────────────────────
 
-def run_episode(task_id: str, seed: int = 42, max_steps: int = 15) -> float:
+def run_episode(task_id: str, seed: int = 42, max_steps: int = 15,
+                debug: bool = False) -> float:
     with httpx.Client(timeout=60, follow_redirects=True) as http:
-        obs = http.post(f"{ENV_URL}/reset",
-                        json={"task_id": task_id, "seed": seed}).json()
+        reset_result = http.post(f"{ENV_URL}/reset",
+                                 json={"task_id": task_id, "seed": seed}).json()
+        # /reset returns {"observation": {...}, "reward": ..., "done": ..., "info": ...}
+        obs = reset_result.get("observation", reset_result)
+        if debug:
+            print(f"\n  [reset] outer keys={list(reset_result.keys())}")
+            print(f"  [reset] obs keys={list(obs.keys())}")
+            print(f"  [reset] task_brief={str(obs.get('task_brief','MISSING'))[:80]}")
+            print(f"  [reset] inbox={obs.get('inbox','MISSING')}")
+            print(f"  [reset] available_record_ids={obs.get('available_record_ids','MISSING')}")
+
         for step in range(max_steps):
-            action = call_model(obs_to_text(obs))
+            obs_text = obs_to_text(obs)
+            raw_resp  = None
+            # get raw response before parsing
+            resp = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user",   "content": obs_text},
+                ],
+                temperature=0.0,
+                max_tokens=128,
+            )
+            raw_resp = resp.choices[0].message.content or ""
+            action = parse_action(raw_resp)
+
+            if debug and step == 0:
+                print(f"  [step 0 raw] {repr(raw_resp[:200])}")
+                print(f"  [step 0 action] {action}")
+
             result = http.post(f"{ENV_URL}/step", json=action).json()
+            if debug and step == 0:
+                print(f"  [step 0 result] reward={result.get('reward')} done={result.get('done')} keys={list(result.keys())}")
+
             obs = result.get("observation", obs)
             if result.get("done"):
-                return float(result.get("info", {}).get("final_score",
-                       result.get("reward", 0.0)))
-        state = http.post(f"{ENV_URL}/state").json()
-        return float(state.get("final_score") or state.get("rubric_progress") or 0.0)
+                final = float(result.get("info", {}).get("final_score",
+                              result.get("reward", 0.0)))
+                if debug:
+                    print(f"  [done at step {step}] final={final}")
+                return final
+
+        # /state is GET, not POST
+        state = http.get(f"{ENV_URL}/state").json()
+        if debug:
+            print(f"  [state] keys={list(state.keys())}")
+            print(f"  [state] {state}")
+        # explicit None check — 0.0 is falsy so "or" would skip it
+        for key in ("final_score", "rubric_progress", "score", "current_score"):
+            v = state.get(key)
+            if v is not None:
+                return float(v)
+        return 0.0
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
