@@ -1,211 +1,99 @@
-# AegisDesk: A Deterministic RL Benchmark for Enterprise Support Operations
+# AegisDesk: Training Support Agents to Think Before They Act
 
-*Can a language model do what a real enterprise support operator does? We built a benchmark to find out.*
+*A deterministic OpenEnv benchmark for B2B SaaS support operations.*
 
----
+Most agent benchmarks are easy to demo and hard to trust. They either collapse into short toy tasks that strong models already solve, or they rely on free-form judging where another model quietly sits in the reward loop and decides what "good" means. That makes the score look impressive, but not always reproducible.
 
-## The Problem
+AegisDesk was built to solve that problem from the ground up. The goal was not to make another chatbot benchmark. The goal was to build an environment where an agent has to behave like a real enterprise support operator: pick the right ticket from a noisy inbox, inspect the right records before touching account state, follow policy windows, react safely to suspicious requests, and close the case under a real step budget. The more we worked on it, the clearer the challenge became: this is not just language generation. It is sequential decision making with memory, caution, and consequences.
 
-Most agent benchmarks fall into one of two traps:
+At a glance, AegisDesk is built around four ideas:
 
-**Trap 1 — Too simple.** The task is complete in one or two turns, the action space is a handful of choices, and a well-prompted frontier model already scores near-perfect. There is nothing left to train toward.
+- deterministic grading instead of LLM judges
+- enterprise support workflows instead of toy chat tasks
+- held-out generalization variants instead of a single small pack
+- a public training path that judges can inspect and rerun
 
-**Trap 2 — Unjudgeable.** The task requires evaluating free-form output, so you bring in an LLM judge. Now your benchmark has a second model in the reward path, and your scores are as reproducible as that judge's mood.
+## Situation
 
-AegisDesk avoids both. The tasks are genuinely hard — a random agent scores near 0.0, and the Qwen2.5-72B zero-shot baseline lands at 0.27. And the grading is fully deterministic: same fixture, same actions, same score. Every time.
+Enterprise support is a surprisingly strong testbed for reinforcement learning. In a real SaaS operations queue, the right action is rarely obvious from the first user message. Two tickets may look similar but require opposite outcomes once you inspect the account state. A refund can be allowed in one case and forbidden in another. An admin request can be routine, or it can be a social engineering trap. Good support work is not about sounding helpful. It is about reading the right evidence before acting.
 
----
+That is exactly the gap we wanted to capture. We needed a benchmark that felt realistic enough to matter, but deterministic enough to grade without an LLM judge. If the same trajectory could get a different score on a different day, the benchmark would fail its purpose.
 
-## What AegisDesk Is
+## Task
 
-AegisDesk is an OpenEnv benchmark that simulates a B2B SaaS support console. An agent is dropped into an inbox with multiple tickets, given a task brief, and must complete the case within a step budget.
+So the task for AegisDesk was very specific: build an OpenEnv environment that is hard enough to train on, strict enough to audit, and broad enough to measure generalization instead of memorization.
 
-At each step the agent emits a structured JSON action:
+We also wanted the benchmark story to be stronger than "here are nine tasks." A serious RL benchmark should not only ask whether a model can improve on the same episodes it sees during training. It should ask whether that improvement transfers to unseen but structurally similar cases.
 
-```json
-{"action_type": "inspect_record", "record_id": "billing_2024_Q4"}
-```
+That is why AegisDesk is organized around **27 judged fixtures**. Nine are canonical training fixtures. Eighteen are held-out generalization variants that share the same business logic, but change the account state, record layout, amounts, and context. On top of that, there are three extra showcase fixtures used for demos, not for the official score. In other words, the environment is designed to answer a harder question: *does the model actually learn the workflow, or does it just learn the examples?*
 
-The environment applies the action, updates world state, computes a dense per-step reward, and returns the next observation. The episode ends when the agent finalizes a resolution or exhausts its steps.
+The benchmark split is simple, but important:
 
-The reward formula:
+- **9 canonical fixtures** for training and the main development loop
+- **18 held-out judged variants** for real generalization checks
+- **3 showcase fixtures** for demos, not for the official score
 
-```
-reward = progress_delta
-       + behavior_adjustment
-       + phase_bonus
-       + (qa_score × 0.1 × 0.15)
-```
+## Action
 
-There is no language model in the reward path. All rubric items are fixture-defined. The grader is a pure Python function.
+AegisDesk drops the agent into a simulated support console built on OpenEnv. Every step is a structured JSON action such as opening a ticket, inspecting a record, searching the knowledge base, escalating, applying credit, or finalizing a resolution. The action space is simple to inspect, but the decision process behind each action is not.
 
----
+What makes the environment interesting is the combination of constraints. The inbox contains distractor tickets. Records are hidden until the agent explicitly inspects them. Several tasks contain policy gates that only become clear after reading the evidence. Some requests are security-sensitive and should be escalated rather than fulfilled. Long-horizon tasks such as breach response and contract renewal have mandatory phase ordering, so an agent that jumps straight to resolution loses reward even if the final answer sounds plausible.
 
-## Why Enterprise Support Is an Interesting RL Problem
+The environment also includes dynamic behavior. A `CustomerSimAgent` can inject follow-up messages mid-episode, which forces the policy to respond to changing context instead of replaying a canned plan. A `QualityReviewAgent` contributes a small deterministic quality component at the end, but the reward path itself does not depend on another model's opinion. The core grader is still fixture-defined and reproducible.
 
-A well-designed enterprise support workflow has every property you want in an RL environment:
+That determinism is the heart of the project. Every fixture encodes its rubric directly: what records must be inspected, what actions are forbidden, what order the phases must happen in, and what the policy windows are. The same fixture plus the same sequence of actions produces the same score every time. That makes AegisDesk much more suitable for RL than a benchmark whose reward changes with phrasing.
 
-**Partial observability.** The inbox shows multiple tickets. Records are only revealed when explicitly requested. The agent must decide what to look at before it can act correctly.
+The training story follows the same principle. We created a public Kaggle notebook and helper stack around GRPO using Hugging Face TRL, with the live AegisDesk Space acting as the reward environment. We also built supporting corpora from customer-support and task-oriented dialogue datasets so the agent can be warmed up before RL. The important discipline is that the held-out generalization fixtures stay out of training. They are reserved for evaluation only.
 
-**Policy constraints.** Discounts have ceilings. Escalation has defined triggers. Security-sensitive requests require verification before fulfillment. Acting without reading the right records is penalized.
+In practice, the agent is forced to learn several different behaviors at once:
 
-**Phase ordering.** Long-horizon tasks (data breach response, contract renewal) have phases that must complete in declared order. Jumping to resolution before completing investigation costs reward.
+- choose the right ticket from a distractor-filled inbox
+- inspect records before making state-changing actions
+- follow policy windows such as limits, approvals, and escalation rules
+- survive long-horizon workflows where phases must happen in order
+- react safely when a request looks suspicious or incomplete
 
-**Multi-agent dynamics.** A `CustomerSimAgent` injects follow-up messages mid-episode. A `QualityReviewAgent` evaluates the final case notes. The agent must handle both.
+## Result
 
-**Forbidden action traps.** Some actions are terminal — they set `done=True` immediately and lock the score. A good agent learns to recognize when a request looks like a social engineering attempt and escalates rather than fulfills.
+The most important result so far is not a single headline score. It is that AegisDesk already shows real benchmark headroom while remaining fully deterministic.
 
-This combination makes AegisDesk a more realistic RL training target than a static instruction benchmark, and more auditable than a free-form judge environment.
+In the latest public reference run, `Qwen/Qwen2.5-72B-Instruct` reached a mean score of **0.325** across the nine canonical tasks in zero-shot multi-step evaluation. That is meaningfully above the earlier `0.27` reference baseline, but still far from saturation. In practice, this is exactly what we want from the benchmark: strong models can make progress, but they do not solve it by default.
 
----
+Just as important, the environment is not a toy. The benchmark now exposes **30 surfaced fixtures** in total, with **27 judged fixtures** used for the official score. The nine canonical tasks cover baseline execution, world modeling, multi-agent follow-up, and long-horizon phase ordering. The eighteen held-out variants test whether improvements transfer to unseen but structurally similar support episodes. That makes the score much harder to game and much more interesting to interpret.
 
-## Benchmark Design
+The project also meets the hackathon requirement that the environment be discoverable and runnable. The Hugging Face Space is live, the benchmark card is machine-readable, the oracle viewer is public, and the GRPO training notebook is available for reruns. In other words, this is not just a paper design. It is a working environment with a public interface and a training path judges can inspect themselves.
 
-### The fixture model
+For a judge, that means AegisDesk is easy to validate in three different ways:
 
-Each episode is specified by a YAML fixture file. The fixture defines:
-- the inbox and available records
-- the task brief shown to the agent
-- the ordered rubric items (what must happen and in what order)
-- the forbidden actions and whether they are terminal
-- the policy window (discount limits, escalation thresholds, step budget)
+- you can manually play the console and feel the task difficulty
+- you can inspect deterministic oracle traces and benchmark metadata
+- you can rerun the public training notebook and inspect reward and loss behavior
 
-Canonical fixtures use `fixture_id == task_id`. Held-out generalization variants use `fixture_id = <task_id>_v<n>` and share the parent `task_id` but have different account states, amounts, and record layouts.
+## Why This Matters
 
-### The benchmark split
+What makes AegisDesk exciting to us is that it sits in a sweet spot many benchmarks miss. It is realistic enough to feel like work, not trivia. It is strict enough to reward cautious behavior instead of eloquent guessing. And it is reproducible enough to support serious RL experimentation.
 
-| Pack | Count | Role |
-|---|---:|---|
-| `core` | 3 | canonical baseline fixtures |
-| `v2` | 6 | canonical Round 2 fixtures |
-| `generalization` | 18 | held-out judged variants — never used in training |
-| `showcase` | 3 | demo-only |
-| **judged total** | **27** | official benchmark score |
+That combination matters because enterprise agents will eventually be judged on more than tone. They will be judged on whether they read the right evidence, whether they follow policy, whether they resist unsafe shortcuts, and whether they can recover from ambiguity without human-style handholding. AegisDesk was designed around exactly those behaviors.
 
-The 9 canonical fixtures are the training pack. The 18 generalization fixtures are held out completely — they test whether improvement on canonical fixtures transfers to structurally similar but unseen episodes.
+If the benchmark does its job well, the result is bigger than one competition submission. It becomes a compact but meaningful environment for studying how operational agents learn to act safely under uncertainty.
 
-### The task mix
+That is the real bet behind the project. We are not claiming that enterprise support is the only useful agent benchmark. We are claiming that it is one of the clearest places where RL should matter, because the difference between a weak agent and a strong one is not style. It is whether the model learns to inspect, verify, and act with discipline.
 
-The 9 canonical tasks span four capability axes that map directly to the Round 2 competition themes:
+## Try AegisDesk
 
-| Task | Theme |
-|---|---|
-| Billing seat adjustment, Suspicious admin request | Baseline — correct ticket selection, evidence inspection |
-| Login incident triage, Service reinstatement, API partner audit | World Modeling — current account state drives the correct action |
-| Customer escalation chain, Multi-tier billing dispute | Multi-Agent — CustomerSimAgent follow-ups, cross-team coordination |
-| Data breach response lifecycle, Contract renewal negotiation | Long-Horizon — 25–30 step episodes with mandatory phase ordering |
+The live environment is available on Hugging Face Space: [https://i4mgr00t-meta.hf.space](https://i4mgr00t-meta.hf.space)
 
----
+The GitHub repository is here: [https://github.com/kumarabhik/AegisDesk](https://github.com/kumarabhik/AegisDesk)
 
-## Training Pipeline
+The public Kaggle-style training notebook lives here: [training/AegisDesk_Kaggle_GRPO.ipynb](training/AegisDesk_Kaggle_GRPO.ipynb)
 
-We trained `Qwen2.5-7B-Instruct` with GRPO (Group Relative Policy Optimization) via TRL's `GRPOTrainer`, using the live AegisDesk Space as the reward environment.
+The latest public benchmark reference run is here: [training/benchmark_results.json](training/benchmark_results.json)
 
-**Reward function:** for each generated completion, we reset the environment with the corresponding task and seed, step with the parsed action, and return the immediate reward. No offline reward model — every training signal comes from the live deterministic grader.
+If you want the shortest version of the story, it is this:
 
-**Dataset:** 72 training rows (9 tasks × 8 seeds) with chat-format prompts. Each prompt includes the system role and a task brief. The model learns to emit a valid JSON action that makes progress on the rubric.
+- train on 9 canonical support workflows
+- test on 18 held-out variants
+- grade everything deterministically
+- measure whether the policy learns to think before it acts
 
-**Training configuration:**
-- LoRA rank 16, alpha 32, NF4 4-bit quantization
-- 2 epochs, learning rate 5e-6
-- Effective batch size 16 (grad_accum=16, batch_size=1)
-- G=2 completions per prompt for group relative reward
-
-**Training corpus (for SFT warm-up):**
-
-| Dataset | Rows |
-|---|---:|
-| Bitext customer support | 5,776 |
-| ABCD | 5,000 |
-| Schema-Guided Dialogue | 4,000 |
-| tau-bench / tau2-bench oracle traces | 69 |
-| **Total SFT** | **15,124** |
-| HelpSteer2 preference pairs | 7,118 |
-| **Total preference** | **7,119** |
-
-**Generalization discipline:** the 18 held-out judged fixtures are excluded from SFT, preference tuning, and GRPO. They only appear at evaluation time.
-
----
-
-## Results
-
-**Baseline (Qwen2.5-72B, zero-shot, 3 core tasks):** 0.27
-
-After GRPO training on the 9 canonical fixtures with `Qwen2.5-7B-Instruct`:
-
-| Pack | Mean Score |
-|---|---:|
-| core (3 fixtures) | see `training/benchmark_results.json` |
-| v2 (6 fixtures) | see `training/benchmark_results.json` |
-| generalization (18 fixtures) | see `training/benchmark_results.json` |
-| **all judged (27 fixtures)** | **see `training/benchmark_results.json`** |
-
-Reward curves and per-task scores: [training/reward_curves_overall.png](training/reward_curves_overall.png)
-
----
-
-## Try It Yourself
-
-**Live Space:** https://i4mgr00t-meta.hf.space
-
-```bash
-# Interactive console (manual play)
-https://i4mgr00t-meta.hf.space/console
-
-# Oracle trajectory viewer (see the optimal path)
-https://i4mgr00t-meta.hf.space/trajectory-viewer
-
-# Benchmark card (machine-readable)
-https://i4mgr00t-meta.hf.space/benchmark-card
-```
-
-**Run an episode via API:**
-
-```python
-import httpx, json
-
-ENV = "https://i4mgr00t-meta.hf.space"
-
-with httpx.Client() as client:
-    obs = client.post(f"{ENV}/reset",
-                      json={"task_id": "billing_seat_adjustment", "seed": 42}).json()
-    print(obs["task_brief"])
-
-    result = client.post(f"{ENV}/step",
-                         json={"action_type": "open_ticket",
-                               "ticket_id": obs["inbox"][0]["ticket_id"]}).json()
-    print(f"reward: {result['reward']:.3f}")
-```
-
-**Clone and run locally:**
-
-```bash
-git clone https://github.com/kumarabhik/AegisDesk.git
-cd AegisDesk
-pip install -e .
-python -m server.app
-# → http://127.0.0.1:7860/console
-```
-
-**Train:**
-
-```bash
-# On Kaggle T4 — open training/AegisDesk_Kaggle_GRPO.ipynb
-# Set HF_TOKEN secret, T4 GPU, Internet ON, then Run All
-```
-
----
-
-## What's Next
-
-- Self-improvement loop: harvest trajectories from the trained model, generate DPO pairs from winner/loser splits, run another GRPO round on the updated policy
-- Curriculum scheduling: weight canonical fixtures by current per-task reward deficit
-- Longer context: extend max completion length to allow multi-step reasoning traces before the final action JSON
-
-The benchmark, environment, and training pipeline are all open. Pull requests welcome.
-
----
-
-*Built for the Meta OpenEnv Hackathon 2026.*  
-*Code: https://github.com/kumarabhik/AegisDesk*  
-*Space: https://huggingface.co/spaces/I4mGr00T/Meta*
+Built for the Meta OpenEnv India Hackathon 2026.
