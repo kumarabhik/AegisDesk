@@ -337,13 +337,18 @@ def evaluate_local_model_on_env(
     ]
 
     def format_obs_brief(obs: dict[str, Any]) -> str:
-        inbox = obs.get("inbox", [])
+        inbox = obs.get("inbox", []) or []
         inbox_lines = [
-            f"  {ticket['ticket_id']}: {ticket['subject']} | {ticket['priority']} | {ticket['status']}"
-            for ticket in inbox
+            f"  {t.get('ticket_id', '?')}: {t.get('subject', '?')} | {t.get('priority', '?')} | {t.get('status', '?')}"
+            for t in inbox
+            if isinstance(t, dict)
         ]
-        focus_panel = obs.get("focus_panel")
-        focus = f"\nFocus: {focus_panel['title']}\n{focus_panel['body'][:500]}" if focus_panel else ""
+        focus_panel = obs.get("focus_panel") or {}
+        focus = (
+            f"\nFocus: {focus_panel.get('title', '')}\n{(focus_panel.get('body') or '')[:500]}"
+            if focus_panel
+            else ""
+        )
         return (
             f"Task: {obs.get('task_brief', '')}\n"
             f"Step: {obs.get('step_count', 0)} / {obs.get('remaining_steps', 0)} remaining\n"
@@ -395,7 +400,7 @@ def evaluate_local_model_on_env(
                 for _ in range(max_steps):
                     action = generate_action(format_obs_brief(obs))
                     result = http.post(f"{env_url}/step", json=action).json()
-                    obs = result.get("observation", obs)
+                    obs = result.get("observation", obs) or obs
                     if result.get("done"):
                         break
                 state = http.get(f"{env_url}/state").json()
@@ -404,7 +409,7 @@ def evaluate_local_model_on_env(
                 print(f"  {task_id:<42}  {score:.3f}")
             except Exception as exc:
                 scores[task_id] = 0.0
-                print(f"  {task_id:<42}  ERROR: {exc}")
+                print(f"  {task_id:<42}  ERROR: {type(exc).__name__}: {exc!r}")
 
     mean_score = sum(scores.values()) / len(scores)
     print(f"\n  {'Mean':<42}  {mean_score:.3f}")
