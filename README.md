@@ -19,54 +19,100 @@ tags:
   - rl
 ---
 
-# AegisDesk
+# AegisDesk 🛡️
 
-`AegisDesk` is the public benchmark name for `support_ops_env`, an OpenEnv environment for B2B SaaS support operations. Agents must choose the right ticket, inspect the right records, follow policy, avoid unsafe shortcuts, communicate clearly, and finish with a deterministic resolution.
+**A deterministic RL benchmark for B2B SaaS support operations.**
 
-The benchmark now exposes:
-- `30` surfaced fixtures
-- `27` judged fixtures
-- `3` showcase fixtures
+AegisDesk tests whether an agent can do what a real enterprise support operator does: pick the right ticket from a noisy inbox, inspect the right records before touching anything, follow policy (escalation rules, discount limits, security gates), coordinate across customers and internal teams, and close the case with a verifiable, auditable resolution — under a step budget.
 
-The main training/evaluation story is:
-- train on `9` canonical enterprise fixtures
-- test on `18` held-out judged variants
-- keep `3` showcase fixtures outside the main score-report pack
+No LLM judges. No fuzzy grading. Same fixture + same actions = same score, always.
 
-The YAML fixture files under `server/task_data/` are episode specifications for deterministic evaluation. They are not the whole training corpus. The real training data now lives in the derived corpora under `training/data/`.
+## Quick Links
 
-## Judge Quick Start
+| | |
+|---|---|
+| Live Space | https://i4mgr00t-meta.hf.space |
+| Interactive console | https://i4mgr00t-meta.hf.space/console |
+| Oracle trajectory viewer | https://i4mgr00t-meta.hf.space/trajectory-viewer |
+| Benchmark card | https://i4mgr00t-meta.hf.space/benchmark-card |
+| GitHub | https://github.com/kumarabhik/AegisDesk |
 
-- Live Space: `https://i4mgr00t-meta.hf.space`
-- Hugging Face Space repo: `https://huggingface.co/spaces/I4mGr00T/Meta`
-- GitHub repo: `https://github.com/kumarabhik/AegisDesk`
-- Landing page: `https://i4mgr00t-meta.hf.space/home`
-- Interactive console: `https://i4mgr00t-meta.hf.space/console`
-- Oracle trajectory viewer: `https://i4mgr00t-meta.hf.space/trajectory-viewer`
-- Benchmark card: `https://i4mgr00t-meta.hf.space/benchmark-card`
-- Design doc: [design_doc.md](design_doc.md)
-- Round 1 design archive: [ROUND1_DESIGN_DOC.md](ROUND1_DESIGN_DOC.md)
-- Results log: [RESULTS.md](RESULTS.md)
-- Submission overview: [SUBMISSION_OVERVIEW.md](SUBMISSION_OVERVIEW.md)
-- Slide deck: [ROUND2_SLIDE_DECK.md](ROUND2_SLIDE_DECK.md)
-- Training guide: [training/README.md](training/README.md)
-- HF Jobs runbook: [training/HF_JOBS_RUNBOOK.md](training/HF_JOBS_RUNBOOK.md)
+## Benchmark At a Glance
 
-## Current Readiness
+| | |
+|---|---|
+| Surfaced fixtures | **30** |
+| Judged fixtures | **27** |
+| Training fixtures | **9** (canonical only) |
+| Held-out generalization fixtures | **18** (never used in training) |
+| Showcase fixtures | **3** (demo only) |
+| Grading | deterministic rubric — no LLM judge |
+| Baseline score | **0.27** (Qwen2.5-72B on 3 core tasks, zero-shot) |
 
-Verified locally in this workspace:
-- `python -m pytest -q` -> `57 passed`
-- `openenv validate` -> `[OK] meta: Ready for multi-mode deployment`
-- `/tasks` returns the truthful surfaced catalog with `fixture_id`, `task_id`, `track`, `judged`, and `oracle_available`
-- `/trajectory-report` works for every surfaced fixture
-- `oracle_demo.py` supports `core`, `v2`, `benchmark`, `generalization`, `showcase`, and `all`
-- `python scripts/fetch_real_datasets.py` builds:
-  - `training/data/support_sft.jsonl` with `15,124` rows
-  - `training/data/support_pref.jsonl` with `7,119` rows
-  - `training/support_rl_manifest.json`
+## The Core Benchmark Story
 
-Main remaining gap:
-- the benchmark is strong, but **real checked-in training evidence is still pending**. The repo now has the data path, manifest, and reporting path, but not a finished GPU-backed champion run.
+The main claim is not just "9 tasks." It is:
+
+> Train on **9 canonical** enterprise support fixtures, evaluate on **18 held-out judged variants**, and show whether improvement transfers to unseen fixture variants.
+
+This separates **memorization of canonical fixtures** from **genuine generalization** to structurally similar but unseen episodes — a stronger RL evaluation story than a single-pack benchmark.
+
+## Task Mix
+
+| Task | Track | Theme | Max Steps |
+|---|---|---|---:|
+| `billing_seat_adjustment` | core | Baseline | 12 |
+| `login_incident_triage` | core | World Modeling | 12 |
+| `suspicious_admin_request` | core | Baseline | 12 |
+| `customer_escalation_chain` | v2 | Multi-Agent | 15 |
+| `multi_tier_billing_dispute` | v2 | Multi-Agent | 15 |
+| `data_breach_response_lifecycle` | v2 | Long-Horizon | 30 |
+| `contract_renewal_negotiation` | v2 | Long-Horizon | 25 |
+| `service_reinstatement_review` | v2 | World Modeling | 12 |
+| `api_partner_access_audit` | v2 | World Modeling | 15 |
+
+Each task has 2 held-out judged generalization variants (`_v1`, `_v2`) that are excluded from training.
+
+## Why This Is Hard
+
+A random or naive agent scores near **0.0**. The zero-shot frontier model baseline is **0.27**. The difficulty comes from:
+
+- **Distractor inbox** — multiple tickets are visible; picking the wrong one wastes steps
+- **Mandatory evidence inspection** — rubric items require specific records to be read before mutating state
+- **Policy windows** — discounts, escalation triggers, and security gates are fixture-dependent
+- **Phase ordering** — long-horizon tasks (breach response, contract renewal) penalize out-of-order actions
+- **Multi-agent follow-up** — `CustomerSimAgent` injects follow-up messages that must be handled
+- **Forbidden action traps** — some actions are terminal and immediately lock the score
+
+## What Makes It Novel
+
+AegisDesk combines things most benchmarks treat separately:
+
+- structured operational actions (not free-form text)
+- mandatory record inspection before mutation
+- world-state and policy-window reasoning
+- multi-agent customer simulation
+- long-horizon phase ordering with step budgets
+- deterministic security and escalation rules
+- dense per-step reward shaping
+
+This is a more realistic RL training target than a static instruction benchmark and more auditable than a free-form LLM-judge environment.
+
+## Reward Model
+
+```
+reward = progress_delta
+       + behavior_adjustment
+       + phase_bonus
+       + (qa_score × 0.1 × 0.15)
+```
+
+- `progress_delta`: rubric progress change this step
+- `behavior_adjustment`: sum of behavior penalties (invalid payload: −0.05, loop: −0.03, …)
+- `phase_bonus`: +0.05 per newly completed investigation phase (in declared order only)
+- `qa_score × 0.1 × 0.15`: QualityReviewAgent contribution
+
+No LLM in the reward path. All rubric items are fixture-defined and deterministic.
 
 ## Benchmark Packs
 
@@ -74,188 +120,124 @@ Main remaining gap:
 |---|---:|---|
 | `core` | 3 | canonical baseline fixtures |
 | `v2` | 6 | canonical Round 2 fixtures |
-| `generalization` | 18 | held-out judged variants |
-| `showcase` | 3 | demo-only showcase fixtures |
-| `benchmark` | 27 | official judged benchmark = `core + v2 + generalization` |
-| `all` | 30 | full surfaced catalog = `benchmark + showcase` |
+| `generalization` | 18 | held-out judged variants (never trained on) |
+| `showcase` | 3 | demo-only fixtures |
+| `benchmark` | 27 | full judged set = `core + v2 + generalization` |
+| `all` | 30 | full surfaced catalog |
 
-## Surfaced Fixture Catalog
+## Full Fixture Catalog
 
-| Fixture ID | Track | Task Family | Judged |
-|---|---|---|---:|
-| `billing_seat_adjustment` | `core` | `billing_seat_adjustment` | yes |
-| `login_incident_triage` | `core` | `login_incident_triage` | yes |
-| `suspicious_admin_request` | `core` | `suspicious_admin_request` | yes |
-| `customer_escalation_chain` | `v2` | `customer_escalation_chain` | yes |
-| `multi_tier_billing_dispute` | `v2` | `multi_tier_billing_dispute` | yes |
-| `data_breach_response_lifecycle` | `v2` | `data_breach_response_lifecycle` | yes |
-| `contract_renewal_negotiation` | `v2` | `contract_renewal_negotiation` | yes |
-| `service_reinstatement_review` | `v2` | `service_reinstatement_review` | yes |
-| `api_partner_access_audit` | `v2` | `api_partner_access_audit` | yes |
-| `billing_seat_adjustment_v1` | `generalization` | `billing_seat_adjustment` | yes |
-| `billing_seat_adjustment_v2` | `generalization` | `billing_seat_adjustment` | yes |
-| `login_incident_triage_v1` | `generalization` | `login_incident_triage` | yes |
-| `login_incident_triage_v2` | `generalization` | `login_incident_triage` | yes |
-| `suspicious_admin_request_v1` | `generalization` | `suspicious_admin_request` | yes |
-| `suspicious_admin_request_v2` | `generalization` | `suspicious_admin_request` | yes |
-| `customer_escalation_chain_v1` | `generalization` | `customer_escalation_chain` | yes |
-| `customer_escalation_chain_v2` | `generalization` | `customer_escalation_chain` | yes |
-| `multi_tier_billing_dispute_v1` | `generalization` | `multi_tier_billing_dispute` | yes |
-| `multi_tier_billing_dispute_v2` | `generalization` | `multi_tier_billing_dispute` | yes |
-| `data_breach_response_lifecycle_v1` | `generalization` | `data_breach_response_lifecycle` | yes |
-| `data_breach_response_lifecycle_v2` | `generalization` | `data_breach_response_lifecycle` | yes |
-| `contract_renewal_negotiation_v1` | `generalization` | `contract_renewal_negotiation` | yes |
-| `contract_renewal_negotiation_v2` | `generalization` | `contract_renewal_negotiation` | yes |
-| `service_reinstatement_review_v1` | `generalization` | `service_reinstatement_review` | yes |
-| `service_reinstatement_review_v2` | `generalization` | `service_reinstatement_review` | yes |
-| `api_partner_access_audit_v1` | `generalization` | `api_partner_access_audit` | yes |
-| `api_partner_access_audit_v2` | `generalization` | `api_partner_access_audit` | yes |
-| `admin_role_transfer_verification` | `showcase` | `admin_role_transfer_verification` | no |
-| `api_rate_limit_escalation` | `showcase` | `api_rate_limit_escalation` | no |
-| `tax_exemption_credit_review` | `showcase` | `tax_exemption_credit_review` | no |
+| Fixture ID | Track | Judged |
+|---|---|:---:|
+| `billing_seat_adjustment` | core | ✓ |
+| `login_incident_triage` | core | ✓ |
+| `suspicious_admin_request` | core | ✓ |
+| `customer_escalation_chain` | v2 | ✓ |
+| `multi_tier_billing_dispute` | v2 | ✓ |
+| `data_breach_response_lifecycle` | v2 | ✓ |
+| `contract_renewal_negotiation` | v2 | ✓ |
+| `service_reinstatement_review` | v2 | ✓ |
+| `api_partner_access_audit` | v2 | ✓ |
+| `billing_seat_adjustment_v1` | generalization | ✓ |
+| `billing_seat_adjustment_v2` | generalization | ✓ |
+| `login_incident_triage_v1` | generalization | ✓ |
+| `login_incident_triage_v2` | generalization | ✓ |
+| `suspicious_admin_request_v1` | generalization | ✓ |
+| `suspicious_admin_request_v2` | generalization | ✓ |
+| `customer_escalation_chain_v1` | generalization | ✓ |
+| `customer_escalation_chain_v2` | generalization | ✓ |
+| `multi_tier_billing_dispute_v1` | generalization | ✓ |
+| `multi_tier_billing_dispute_v2` | generalization | ✓ |
+| `data_breach_response_lifecycle_v1` | generalization | ✓ |
+| `data_breach_response_lifecycle_v2` | generalization | ✓ |
+| `contract_renewal_negotiation_v1` | generalization | ✓ |
+| `contract_renewal_negotiation_v2` | generalization | ✓ |
+| `service_reinstatement_review_v1` | generalization | ✓ |
+| `service_reinstatement_review_v2` | generalization | ✓ |
+| `api_partner_access_audit_v1` | generalization | ✓ |
+| `api_partner_access_audit_v2` | generalization | ✓ |
+| `admin_role_transfer_verification` | showcase | — |
+| `api_rate_limit_escalation` | showcase | — |
+| `tax_exemption_credit_review` | showcase | — |
 
-## Why This Benchmark Is Interesting
+## Training Pipeline
 
-AegisDesk is not a browser toy and not a pure text-only judge benchmark. It targets a real operational capability gap:
-- selecting the correct case from distractors
-- inspecting the right records before mutating anything
-- following escalation rules instead of unsafe direct fulfillment
-- handling policy windows and world state
-- reacting to injected customer follow-ups
-- completing long-horizon workflows in the right order
+Training corpus (built from public datasets via `scripts/fetch_real_datasets.py`):
 
-That maps naturally to the Round 2 themes:
-- Multi-Agent Interactions
-- Long-Horizon Planning and Instruction Following
-- World Modeling
-- Self-Improving Agent Systems
+| Corpus | Rows | Sources |
+|---|---:|---|
+| `support_sft.jsonl` | 15,124 | Bitext, ABCD, tau-bench, SGD, oracle traces |
+| `support_pref.jsonl` | 7,119 | HelpSteer2, harvested DPO pairs |
 
-## Contract Highlights
+**Training order:**
+1. SFT on `support_sft.jsonl` (Qwen2.5-7B-Instruct + LoRA 4-bit)
+2. Preference tuning on `support_pref.jsonl`
+3. GRPO on 9 canonical training fixtures (live environment reward signal)
+4. Evaluate on all 27 judged fixtures
 
-### Identity model
+**Key discipline:** the 18 `generalization` fixtures are excluded from SFT, preference tuning, and GRPO. They are only used for evaluation.
 
-- `task_id` = task family
-- `fixture_id` = exact episode identity
-- canonical fixtures use `fixture_id == task_id`
-- variants use `fixture_id = <task_id>_v<n>`
+**Training notebook:** [training/AegisDesk_Kaggle_GRPO.ipynb](training/AegisDesk_Kaggle_GRPO.ipynb)  
+**Results:** [training/benchmark_results.json](training/benchmark_results.json)
 
-### Public routes
-
-- `/tasks` -> surfaced fixture catalog
-- `/benchmark-card` -> machine-readable benchmark summary
-- `/console` -> manual operator UI
-- `/trajectory-viewer` -> oracle viewer
-- `/trajectory-report?fixture_id=...` -> scored oracle trace
-
-### Reward model
-
-```text
-reward =
-  progress_delta
-  + behavior_adjustment
-  + phase_bonus
-  + (qa_score × 0.1 × 0.15)
-```
-
-There are no LLM judges and no fuzzy grading.
-
-## Training Story
-
-The intended top-finish training path is:
-
-1. Unsloth QLoRA SFT on `support_sft.jsonl`
-2. Unsloth DPO or ORPO on `support_pref.jsonl`
-3. TRL `GRPOTrainer` on the canonical `9` training fixtures
-4. Evaluate on the full `27` judged fixtures
-
-Repo assets:
-- RL manifest: [training/support_rl_manifest.json](training/support_rl_manifest.json)
-- GRPO trainer: [training/train_grpo_aegisdesk.py](training/train_grpo_aegisdesk.py)
-- Self-improve loop: [training/self_improve.py](training/self_improve.py)
-- Trajectory harvester: [training/trajectory_harvester.py](training/trajectory_harvester.py)
-- Dataset fetch/build script: [scripts/fetch_real_datasets.py](scripts/fetch_real_datasets.py)
-- Notebook: [training/AegisDesk_Training.ipynb](training/AegisDesk_Training.ipynb)
-
-### Real dataset sources wired into the repo
-
-- Bitext customer support dataset
-- ABCD
-- Sierra tau-bench / tau2-bench few-shot trajectories
-- Schema-Guided Dialogue
-- HelpSteer2
-- optional DialogStudio / MultiWOZ samples
-
-Current derived corpus sizes from `python scripts/fetch_real_datasets.py`:
-- `support_sft.jsonl`: `15,124` rows
-  - Bitext: `5,776`
-  - ABCD: `5,000`
-  - tau-bench / tau2-bench: `69`
-  - SGD: `4,000`
-  - AegisDesk oracle traces: included in the combined corpus build
-- `support_pref.jsonl`: `7,119` rows
-  - HelpSteer2: `7,118`
-  - AegisDesk harvested DPO pairs: appended when available
-
-### Training discipline
-
-- the `18` judged `generalization` fixtures are excluded from SFT, preference tuning, and GRPO
-- the `9` canonical fixtures are the main training pack
-- private non-surfaced variants may be used as curriculum fixtures
-
-## Local Usage
-
-Install:
+## API
 
 ```bash
+# Health
+GET  /
+
+# Start episode
+POST /reset   {"task_id": "billing_seat_adjustment", "seed": 42}
+
+# Step
+POST /step    {"action_type": "open_ticket", "ticket_id": "TKT-001"}
+
+# Internal state (debug)
+POST /state
+
+# Surfaced fixture catalog
+GET  /tasks
+
+# Machine-readable benchmark summary
+GET  /benchmark-card
+
+# Scored oracle trace for any surfaced fixture
+GET  /trajectory-report?fixture_id=billing_seat_adjustment
+```
+
+## Local Setup
+
+```bash
+git clone https://github.com/kumarabhik/AegisDesk.git
+cd AegisDesk
 pip install -e .
-```
-
-Serve locally:
-
-```bash
 python -m server.app
+# → http://127.0.0.1:7860/home
 ```
-
-Useful routes:
-- `http://127.0.0.1:7860/home`
-- `http://127.0.0.1:7860/console`
-- `http://127.0.0.1:7860/trajectory-viewer`
-- `http://127.0.0.1:7860/benchmark-card`
 
 ## Validation
 
 ```bash
-python -m pytest -q
-openenv validate
-python verify_space.py --base-url http://127.0.0.1:7860
-python submission_audit.py --space-url https://i4mgr00t-meta.hf.space
+python -m pytest -q          # 57 passed
+openenv validate             # [OK] meta: Ready for multi-mode deployment
+python oracle_demo.py --pack benchmark --seed 11   # all 27 judged fixtures
+python oracle_demo.py --pack all --seed 11         # all 30 surfaced fixtures
 ```
 
-Oracle packs:
+## Repo Layout
 
-```bash
-python oracle_demo.py --pack benchmark
-python oracle_demo.py --pack generalization
-python oracle_demo.py --pack showcase
-python oracle_demo.py --pack all
-```
-
-## Evidence Path
-
-The repo now contains the structure for a strong submission, but the following are still pending a real run:
-- `training/benchmark_results.json`
-- reward curve PNG
-- loss curve PNG
-- per-track delta figure
-- champion-vs-baseline narrative in the slide deck
-
-This is the main remaining blocker between “strong benchmark” and “top-finish-safe submission.”
-
-## Repo Pointers
-
-- Server: [server/app.py](server/app.py)
-- Runtime: [server/environment.py](server/environment.py)
-- Reward logic: [server/reward.py](server/reward.py)
-- Fixture catalog: [server/fixtures.py](server/fixtures.py)
-- Oracle tooling: [oracle_tools.py](oracle_tools.py)
-- Source-of-truth doc: [design_doc.md](design_doc.md)
+| Path | Purpose |
+|---|---|
+| `server/app.py` | FastAPI application |
+| `server/environment.py` | Gym-style reset/step/state |
+| `server/reward.py` | Dense reward shaping |
+| `server/grader.py` | Deterministic rubric grader |
+| `server/fixtures.py` | Fixture catalog registry |
+| `server/task_data/*.yaml` | Episode specifications |
+| `training/train_grpo_aegisdesk.py` | GRPO training script |
+| `training/self_improve.py` | Self-improvement pipeline |
+| `training/AegisDesk_Kaggle_GRPO.ipynb` | Kaggle training notebook |
+| `oracle_tools.py` | Oracle trajectory tools |
+| `oracle_demo.py` | Oracle runner CLI |
+| `scripts/fetch_real_datasets.py` | Corpus builder |
+| `design_doc.md` | Full design narrative |
