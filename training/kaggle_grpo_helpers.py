@@ -386,25 +386,34 @@ def evaluate_local_model_on_env(
         decoded = tokenizer.decode(generated, skip_special_tokens=True)
         return parse_action_text(decoded)
 
+    def _safe_json(response):
+        try:
+            return response.json()
+        except Exception:
+            return {}
+
     print(f"Running benchmark evaluation for {model_name} (max {max_steps} steps per task)...")
     scores: dict[str, float] = {}
 
     with httpx.Client(timeout=60, follow_redirects=True) as http:
         for task_id in tasks:
             try:
-                reset_payload = http.post(
+                reset_payload = _safe_json(http.post(
                     f"{env_url}/reset",
                     json={"task_id": task_id, "seed": seed},
-                ).json()
-                obs = reset_payload.get("observation", reset_payload)
+                ))
+                obs = reset_payload.get("observation", reset_payload) if isinstance(reset_payload, dict) else {}
+                if not isinstance(obs, dict):
+                    obs = {}
                 for _ in range(max_steps):
                     action = generate_action(format_obs_brief(obs))
-                    result = http.post(f"{env_url}/step", json=action).json()
-                    obs = result.get("observation", obs) or obs
-                    if result.get("done"):
-                        break
-                state = http.get(f"{env_url}/state").json()
-                score = float(state.get("final_score") or state.get("rubric_progress") or 0.0)
+                    result = _safe_json(http.post(f"{env_url}/step", json=action))
+                    if isinstance(result, dict):
+                        obs = result.get("observation", obs) or obs
+                        if result.get("done"):
+                            break
+                state = _safe_json(http.get(f"{env_url}/state"))
+                score = float(state.get("final_score") or state.get("rubric_progress") or 0.0) if isinstance(state, dict) else 0.0
                 scores[task_id] = score
                 print(f"  {task_id:<42}  {score:.3f}")
             except Exception as exc:
