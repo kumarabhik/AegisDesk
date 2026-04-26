@@ -26,3 +26,5 @@ training/data/sgd_support_sft.jsonl
 
 # Reward/loss curve outputs (committed manually after training run)
 training/*.png
+
+.env
