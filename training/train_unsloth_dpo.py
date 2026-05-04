@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +69,10 @@ def _validate_row(row: dict[str, Any], min_score_gap: float) -> bool:
 
 def main() -> None:
     args = parse_args()
+    if str(args.report_to).strip().lower() in {"", "none"}:
+        # Kaggle images sometimes ship with a broken wandb package. Disable the
+        # integration entirely when we are not reporting there anyway.
+        os.environ.setdefault("WANDB_DISABLED", "true")
 
     from datasets import load_dataset
     from transformers import TrainingArguments
