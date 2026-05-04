@@ -15,11 +15,14 @@ The source of truth for fixture splits is:
 ## Main Files
 
 - `train_grpo_aegisdesk.py`: TRL/OpenEnv GRPO starter
+- `train_unsloth_dpo.py`: Unsloth DPO trainer for preference pairs
+- `build_aegisdesk_preference_corpus.py`: mixes harvested AegisDesk pairs with the base preference corpus
 - `self_improve.py`: baseline -> harvest -> DPO pairs -> train -> re-evaluate
 - `trajectory_harvester.py`: collects trajectories from benchmark runs
 - `dpo_pair_generator.py`: builds `(chosen, rejected)` preference pairs
 - `adaptive_scheduler.py`: curriculum weighting helpers
 - `AegisDesk_Training.ipynb`: notebook path for HF Jobs / Colab
+- `AegisDesk_Kaggle_DPO.ipynb`: Kaggle-safe DPO notebook path
 - `HF_JOBS_RUNBOOK.md`: stage-by-stage cloud GPU plan with hardware, timeouts, and artifact gates
 - `strongest_submission.py`: numbered 10-step execution path
 - `check_training_readiness.py`: corpus, manifest, dependency, and endpoint readiness doctor
@@ -73,6 +76,15 @@ python training/check_training_readiness.py \
 1. Unsloth QLoRA SFT on `support_sft.jsonl`
 2. Unsloth DPO or ORPO on `support_pref.jsonl`
 3. TRL `GRPOTrainer` on the canonical 9-fixture pack
+
+If you are training on Kaggle or a small single GPU, prefer:
+
+1. harvested AegisDesk trajectories
+2. `build_aegisdesk_preference_corpus.py`
+3. `train_unsloth_dpo.py`
+4. evaluation
+
+This is usually more stable than trying to make online GRPO carry the whole project on constrained hardware.
 
 Concrete entrypoints:
 - `train_unsloth_sft.py`
@@ -131,6 +143,33 @@ python training/train_unsloth_dpo.py \
   --model Qwen/Qwen3-8B \
   --report-to trackio \
   --run-name aegisdesk-dpo
+```
+
+## Build AegisDesk-Focused DPO Data
+
+After harvesting trajectories, build a project-heavy preference set:
+
+```bash
+python training/build_aegisdesk_preference_corpus.py \
+  --wins-file training/data/harvest_latest_wins.jsonl \
+  --fails-file training/data/harvest_latest_fails.jsonl \
+  --base-pref training/data/support_pref.jsonl \
+  --output training/data/aegisdesk_pref.jsonl \
+  --upsample-project-pairs 4
+```
+
+If you omit `--wins-file`, the latest harvested files in `training/data/` are used automatically.
+
+Then train DPO on the mixed corpus:
+
+```bash
+python training/train_unsloth_dpo.py \
+  --dataset training/data/aegisdesk_pref.jsonl \
+  --output training/outputs/dpo-aegisdesk-kaggle \
+  --model Qwen/Qwen2.5-1.5B-Instruct \
+  --epochs 1.0 \
+  --report-to none \
+  --run-name aegisdesk-kaggle-dpo
 ```
 
 ## Run The Self-Improvement Loop
