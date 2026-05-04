@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import importlib.machinery
 import os
+import sys
+import types
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +20,25 @@ TARGET_MODULES = [
     "up_proj",
     "down_proj",
 ]
+
+
+def _install_wandb_stub() -> None:
+    """
+    Transformers 5.x may import `wandb` just to probe availability, even when
+    logging is disabled. Kaggle images sometimes ship a broken wandb install,
+    so we provide a tiny stub to keep that probe from exploding.
+    """
+    if "wandb" in sys.modules:
+        return
+
+    stub = types.ModuleType("wandb")
+    stub.__spec__ = importlib.machinery.ModuleSpec("wandb", loader=None)
+    stub.run = None
+    stub.config = {}
+    stub.init = lambda *args, **kwargs: None
+    stub.finish = lambda *args, **kwargs: None
+    stub.log = lambda *args, **kwargs: None
+    sys.modules["wandb"] = stub
 
 
 def parse_args() -> argparse.Namespace:
@@ -73,6 +95,7 @@ def main() -> None:
         # Kaggle images sometimes ship with a broken wandb package. Disable the
         # integration entirely when we are not reporting there anyway.
         os.environ.setdefault("WANDB_DISABLED", "true")
+        _install_wandb_stub()
 
     from datasets import load_dataset
     from transformers import TrainingArguments
