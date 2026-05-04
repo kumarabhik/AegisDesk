@@ -7,7 +7,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-from training.dpo_pair_generator import generate_pairs, load_jsonl
+try:
+    from training.dpo_pair_generator import generate_pairs, load_jsonl
+except ModuleNotFoundError:
+    from dpo_pair_generator import generate_pairs, load_jsonl
 
 
 def parse_args() -> argparse.Namespace:
@@ -71,15 +74,31 @@ def _to_preference_row(pair: dict[str, Any]) -> dict[str, Any]:
 def main() -> int:
     args = parse_args()
 
-    wins_file = Path(args.wins_file) if args.wins_file else _latest_harvest_file("wins")
-    fails_file = Path(args.fails_file) if args.fails_file else Path(str(wins_file).replace("_wins.jsonl", "_fails.jsonl"))
-    if not fails_file.exists():
-        raise FileNotFoundError(f"Fails file not found: {fails_file}")
+    project_rows: list[dict[str, Any]] = []
+    wins_file: Path | None = None
+    fails_file: Path | None = None
+    if args.wins_file or args.fails_file:
+        wins_file = Path(args.wins_file) if args.wins_file else _latest_harvest_file("wins")
+        fails_file = Path(args.fails_file) if args.fails_file else Path(str(wins_file).replace("_wins.jsonl", "_fails.jsonl"))
+        if not fails_file.exists():
+            raise FileNotFoundError(f"Fails file not found: {fails_file}")
+    else:
+        try:
+            wins_file = _latest_harvest_file("wins")
+            fails_file = Path(str(wins_file).replace("_wins.jsonl", "_fails.jsonl"))
+            if not fails_file.exists():
+                raise FileNotFoundError(f"Fails file not found: {fails_file}")
+        except FileNotFoundError:
+            wins_file = None
+            fails_file = None
 
-    wins = load_jsonl(wins_file)
-    fails = load_jsonl(fails_file)
-    project_pairs = generate_pairs(wins, fails, max_pairs_per_task=args.max_pairs_per_task)
-    project_rows = [_to_preference_row(pair) for pair in project_pairs]
+    if wins_file and fails_file:
+        wins = load_jsonl(wins_file)
+        fails = load_jsonl(fails_file)
+        project_pairs = generate_pairs(wins, fails, max_pairs_per_task=args.max_pairs_per_task)
+        project_rows = [_to_preference_row(pair) for pair in project_pairs]
+    else:
+        print("No harvested AegisDesk win/fail files found; building from the base preference dataset only.")
 
     base_rows = _read_jsonl(Path(args.base_pref))
     trimmed_base_rows = base_rows[: max(0, args.max_base_rows)]
